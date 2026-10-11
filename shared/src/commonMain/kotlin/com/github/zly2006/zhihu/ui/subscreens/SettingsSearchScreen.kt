@@ -162,6 +162,16 @@ private fun notificationEntry(
 )
 
 private val settingsSearchEntries = buildList {
+    add(
+        SettingsSearchEntry(
+            id = "appearance.themePreview",
+            title = "主题预览",
+            section = "外观与阅读体验",
+            description = "查看 Material 3 色阶、字体与圆角。",
+            destination = Account.ThemePreview,
+            keywords = listOf("MD3", "设计系统", "配色预览"),
+        ),
+    )
     add(appearanceEntry("appearance.nightMode", "主题模式", "切换浅色、深色或跟随系统。", "nightMode", listOf("夜间模式", "深色模式", "暗色模式", "浅色模式", "跟随系统")))
     add(appearanceEntry("appearance.dynamicColor", "使用 Material You 动态取色", "Android 12+ 根据系统壁纸取色。", "dynamicColor", listOf("动态颜色", "壁纸取色", "主题色")))
     add(appearanceEntry("appearance.landscapeListDetail", "横屏双栏布局", "控制平板和电脑横屏时是否同时显示列表与详情。", LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY, listOf("双栏", "分栏", "平板", "横屏")))

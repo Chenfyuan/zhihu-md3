@@ -404,6 +404,14 @@ fun AppearanceSettingsScreen(
                 title = "主题",
             ) {
                 SettingItem(
+                    title = { Text("主题预览") },
+                    description = { Text("查看 Material 3 色阶、字体与圆角，便于截图对比。") },
+                    settingKey = "themePreview",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("themePreview"),
+                    onClick = { navigator.onNavigate(Account.ThemePreview) },
+                )
+                SettingItem(
                     title = { Text("主题模式") },
                     description = { Text("设置应用的显示主题。") },
                     settingKey = "nightMode",

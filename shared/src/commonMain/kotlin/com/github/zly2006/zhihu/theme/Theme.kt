@@ -24,6 +24,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.dynamicColorScheme
+import kotlin.math.pow
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -35,14 +36,36 @@ private val LightColorScheme = lightColorScheme(
     primary = Purple40,
     secondary = PurpleGrey40,
     tertiary = Pink40,
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
 )
+
+/**
+ * Apply the optional user background without flattening the M3 surface ladder.
+ *
+ * Previously both `background` and `surface` were forced to the same custom color,
+ * which collapsed `surfaceContainer*` tonal roles. Only `background` (and a
+ * matching `onBackground`) is overridden; surface containers stay scheme-derived.
+ */
+private fun Color.relativeLuminance(): Float {
+    fun linearize(channel: Float): Float =
+        if (channel <= 0.04045f) {
+            channel / 12.92f
+        } else {
+            ((channel + 0.055f) / 1.055f).pow(2.4f)
+        }
+    return 0.2126f * linearize(red) + 0.7152f * linearize(green) + 0.0722f * linearize(blue)
+}
+
+internal fun ColorScheme.withOptionalBackground(customBackground: Color): ColorScheme {
+    val onBackground = if (customBackground.relativeLuminance() > 0.5f) {
+        Color(0xFF1C1B1F)
+    } else {
+        Color(0xFFE6E1E5)
+    }
+    return copy(
+        background = customBackground,
+        onBackground = onBackground,
+    )
+}
 
 @Composable
 fun ZhihuTheme(
@@ -66,16 +89,14 @@ fun ZhihuTheme(
         else -> LightColorScheme
     }
 
-    val colorScheme = baseColorScheme.copy(
-        background = customBackgroundColor,
-        surface = customBackgroundColor,
-    )
+    val colorScheme = baseColorScheme.withOptionalBackground(customBackgroundColor)
 
     PlatformSystemBarEffect(darkTheme)
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = ZhihuShapes,
         content = content,
     )
 }

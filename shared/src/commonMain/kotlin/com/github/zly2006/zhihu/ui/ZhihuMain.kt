@@ -56,6 +56,13 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.Newspaper
+import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -150,6 +157,7 @@ import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
 import com.github.zly2006.zhihu.ui.components.ReadingQueueSheet
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.ThemePreviewScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
@@ -376,21 +384,21 @@ fun ZhihuMain(
     }
 
     val allBottomBarItems = listOf(
-        Triple(Home, "主页", Icons.Filled.Home),
-        Triple(Follow, "关注", Icons.Filled.Group),
-        Triple(HotList, "热榜", Icons.Filled.Whatshot),
-        Triple(Daily, "日报", Icons.Filled.Newspaper),
-        Triple(OnlineHistory, "历史", Icons.Filled.History),
-        Triple(MyCollections, "收藏夹", Icons.Filled.Bookmarks),
-        Triple(Account, "账号", Icons.Filled.ManageAccounts),
+        BottomBarItem(Home, "主页", Icons.Filled.Home, Icons.Outlined.Home),
+        BottomBarItem(Follow, "关注", Icons.Filled.Group, Icons.Outlined.Group),
+        BottomBarItem(HotList, "热榜", Icons.Filled.Whatshot, Icons.Outlined.Whatshot),
+        BottomBarItem(Daily, "日报", Icons.Filled.Newspaper, Icons.Outlined.Newspaper),
+        BottomBarItem(OnlineHistory, "历史", Icons.Filled.History, Icons.Outlined.History),
+        BottomBarItem(MyCollections, "收藏夹", Icons.Filled.Bookmarks, Icons.Outlined.Bookmarks),
+        BottomBarItem(Account, "账号", Icons.Filled.ManageAccounts, Icons.Outlined.ManageAccounts),
     )
     val bottomBarItems = selectedBottomBarItemKeys.mapNotNull { key ->
-        allBottomBarItems.firstOrNull { it.first.name == key }
+        allBottomBarItems.firstOrNull { it.destination.name == key }
     }
 
     val mainTabPages = remember(bottomBarItems) {
         bottomBarItems.flatMap { item ->
-            when (item.first) {
+            when (item.destination) {
                 Home -> listOf(MainTabPage.HomePage)
                 Follow -> listOf(MainTabPage.FollowPage)
                 HotList -> listOf(MainTabPage.HotListPage)
@@ -605,23 +613,22 @@ fun ZhihuMain(
                                     ),
                                 ) {
                                     @Composable
-                                    fun Item(
-                                        destination: TopLevelDestination,
-                                        label: String,
-                                        icon: ImageVector,
-                                    ) {
+                                    fun Item(item: BottomBarItem) {
+                                        val destination = item.destination
+                                        val selected =
+                                            currentBottomDestination?.let { it::class == destination::class } == true
                                         val tag = "nav_tab_${destination.name.lowercase()}"
                                         NavigationBarItem(
-                                            currentBottomDestination?.let { it::class == destination::class } == true,
+                                            selected = selected,
                                             onClick = {
                                                 isReadingPlayerExpandedByUser = false
-                                                if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                                if (!selected) {
                                                     navigateTopLevel(destination)
                                                 } else if (tapToScrollToTopEnabled) {
                                                     scrollToTopTrigger++
                                                 }
                                             },
-                                            label = { Text(label) },
+                                            label = { Text(item.label) },
                                             alwaysShowLabel = true,
                                             colors = if (!isDarkTheme) {
                                                 NavigationBarItemDefaults.colors().copy(
@@ -634,14 +641,21 @@ fun ZhihuMain(
                                                 NavigationBarItemDefaults.colors()
                                             },
                                             icon = {
-                                                Icon(icon, contentDescription = label)
+                                                Icon(
+                                                    imageVector = if (selected) {
+                                                        item.selectedIcon
+                                                    } else {
+                                                        item.unselectedIcon
+                                                    },
+                                                    contentDescription = item.label,
+                                                )
                                             },
                                             modifier = Modifier.padding(top = 4.dp).testTag(tag),
                                         )
                                     }
 
                                     bottomBarItems.forEach { item ->
-                                        Item(item.first, item.second, item.third)
+                                        Item(item)
                                     }
                                 }
                             }
@@ -1064,8 +1078,16 @@ private fun NavBackStackEntry?.readingDestinationOrNull(): NavDestination? = whe
     else -> null
 }
 
+private data class BottomBarItem(
+    val destination: TopLevelDestination,
+    val label: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+)
+
 private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
     is Account.AppearanceSettings,
+    Account.ThemePreview,
     Account.ReadingSettings,
     is Account.RecommendSettings,
     Account.RecommendSettings.Blocklist,
@@ -1113,6 +1135,9 @@ private fun NavGraphBuilder.accountSettings(
             setting = args.setting,
             onExit = reloadPreferences,
         )
+    }
+    composable<Account.ThemePreview> {
+        ThemePreviewScreen()
     }
     composable<Account.RecommendSettings> { entry ->
         val args = entry.toRoute<Account.RecommendSettings>()

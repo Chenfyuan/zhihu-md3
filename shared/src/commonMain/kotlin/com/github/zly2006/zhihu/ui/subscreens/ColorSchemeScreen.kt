@@ -32,15 +32,18 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
@@ -59,17 +62,30 @@ fun ColorSchemeScreen() {
     val cs = MaterialTheme.colorScheme
     val scrollState = rememberScrollState()
     val pageTurnTarget = rememberPageTurnTarget(scrollState, enabled = true)
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = cs.surfaceContainer,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text("Color Scheme") },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    IconButton(
+                        onClick = navigator.onNavigateBack,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = cs.surfaceVariant,
+                            contentColor = cs.onSurfaceVariant,
+                        ),
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors().copy(
+                    containerColor = cs.surfaceContainer,
+                    scrolledContainerColor = cs.surfaceContainerHigh,
+                ),
             )
         },
     ) { innerPadding ->

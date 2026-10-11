@@ -224,6 +224,8 @@ dependencies {
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     implementation("androidx.core:core-ktx:1.19.0")
+    // XML Theme.Material3.DayNight for window chrome (Compose owns in-app colors).
+    implementation("com.google.android.material:material:1.13.0")
     // Lifecycle (JetBrains KMP versions)
     implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:$jetbrainsLifecycleVersion")
     implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:$jetbrainsLifecycleVersion")

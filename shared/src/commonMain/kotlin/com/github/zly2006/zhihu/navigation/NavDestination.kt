@@ -127,6 +127,9 @@ data object Account : TopLevelDestination {
     ) : NavDestination
 
     @Serializable
+    data object ThemePreview : NavDestination
+
+    @Serializable
     data object ReadingSettings : NavDestination
 
     @Serializable
