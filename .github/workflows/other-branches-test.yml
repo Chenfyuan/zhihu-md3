@@ -8,7 +8,7 @@ on:
 jobs:
   build_pr:
     name: Build PR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       # Set Current Date As Env Variable
