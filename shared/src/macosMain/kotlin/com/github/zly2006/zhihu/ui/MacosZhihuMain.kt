@@ -327,13 +327,11 @@ private fun rememberMacosZhihuMainPreferenceState(): ZhihuMainPreferenceState {
         listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
     }
     return rememberZhihuMainPreferenceState {
-        val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
         val selectedKeys = normalizeBottomBarSelection(
             settings.getStringSet(
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount, platformBottomBarItemLimit),
+                defaultBottomBarSelectionKeys(platformBottomBarItemLimit),
             ),
-            duo3HomeAccount,
             enforceMinimumSelection = true,
             maximumSelection = platformBottomBarItemLimit,
         )
@@ -342,7 +340,6 @@ private fun rememberMacosZhihuMainPreferenceState(): ZhihuMainPreferenceState {
             selectedKeys,
         )
         ZhihuMainPreferenceSnapshot(
-            duo3HomeAccount = duo3HomeAccount,
             tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
             autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
             landscapeListDetailEnabled = settings.getBoolean(LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY, true),

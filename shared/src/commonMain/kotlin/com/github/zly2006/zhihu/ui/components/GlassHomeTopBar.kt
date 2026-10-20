@@ -66,6 +66,7 @@ fun GlassHomeTopBar(
                 .testTag(HOME_SEARCH_BUTTON_TAG)
                 .clip(RoundedCornerShape(50))
                 .clickable(role = Role.Button, onClick = onSearch),
+            heavy = true,
         ) {
             Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, contentDescription = "搜索")
@@ -87,6 +88,7 @@ fun GlassHomeTopBar(
                     .testTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG)
                     .clip(RoundedCornerShape(50))
                     .clickable(role = Role.Button, onClick = onNotification),
+                heavy = true,
             ) {
                 Icon(Icons.Default.Notifications, contentDescription = "通知")
             }

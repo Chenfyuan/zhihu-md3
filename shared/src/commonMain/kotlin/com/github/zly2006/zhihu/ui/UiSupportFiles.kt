@@ -46,7 +46,6 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
@@ -108,18 +107,16 @@ internal fun JsonObject?.booleanCompat(vararg keys: String): Boolean {
 /**
  * 想法正文的 HTML 渲染入口。
  *
- * 统一使用 Compose Markdown 渲染；提椠 Markdown 开关对想法、问题详情和文章一并生效。
+ * 统一使用 Compose Markdown 渲染。
  */
 @Composable
 fun PinHtmlContent(html: String) {
-    val settings = rememberSettingsStore()
     Spacer(Modifier.height(10.dp))
     RenderMarkdown(
         html = html,
         modifier = Modifier.questionSelectionWorkaround(),
         selectable = true,
         enableScroll = false,
-        useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
     )
 }
 
@@ -155,13 +152,11 @@ fun QuestionDetailContent(
     questionId: Long,
     html: String,
 ) {
-    val settings = rememberSettingsStore()
     RenderMarkdown(
         html = html,
         modifier = Modifier.questionSelectionWorkaround(),
         selectable = true,
         enableScroll = false,
-        useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
     )
 }
 
@@ -228,7 +223,6 @@ enum class ArticleAnswerTransitionDirection {
  * [ZhihuMain] 按快照读取它们，避免把更新到一半的导航设置应用到主界面。
  */
 data class ZhihuMainPreferenceSnapshot(
-    val duo3HomeAccount: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
     val landscapeListDetailEnabled: Boolean,
@@ -247,7 +241,6 @@ class ZhihuMainPreferenceState(
 ) {
     private var snapshot by mutableStateOf(readSnapshot())
 
-    val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
     val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
     val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
     val landscapeListDetailEnabled: Boolean get() = snapshot.landscapeListDetailEnabled

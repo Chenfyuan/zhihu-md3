@@ -203,8 +203,10 @@ object AndroidGlassBottomBarProvider : GlassBottomBarProvider {
     override fun Capsule(
         source: Any,
         modifier: Modifier,
+        heavy: Boolean,
         content: @Composable () -> Unit,
     ) {
+        val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val cs = MaterialTheme.colorScheme
         val supported = isRenderEffectSupported() && LocalLiquidGlassEnabled.current
         Box(
@@ -217,11 +219,13 @@ object AndroidGlassBottomBarProvider : GlassBottomBarProvider {
                             shape = { Capsule() },
                             effects = {
                                 vibrancy()
-                                blur(8.dp.toPx())
+                                blur((if (heavy) 14.dp else 8.dp).toPx())
                                 lens(16.dp.toPx(), 16.dp.toPx())
                             },
                             highlight = { Highlight.Default.copy(alpha = 0.35f) },
-                            onDrawSurface = { drawRect(glassPanelTint(cs.surfaceContainer)) },
+                            onDrawSurface = {
+                                drawRect(if (heavy) glassHeavyTint(cs.surfaceContainer, dark) else glassPanelTint(cs.surfaceContainer))
+                            },
                         )
                     } else {
                         Modifier.clip(RoundedCornerShape(50)).background(glassPanelFallback(cs.surfaceContainer))
@@ -452,3 +456,9 @@ fun glassPanelTint(surface: Color): Color = surface.copy(alpha = 0.42f)
 
 /** Android 12 以下 / 关闭液态玻璃时的降级底色：接近不透明，保证可读。 */
 fun glassPanelFallback(surface: Color): Color = surface.copy(alpha = 0.92f)
+
+/**
+ * 顶部搜索胶囊等"上面有字"的玻璃：底下列表标题会和占位字叠在一起，需要更厚的底色。
+ * 深色 78%、浅色 70%。
+ */
+fun glassHeavyTint(surface: Color, dark: Boolean): Color = surface.copy(alpha = if (dark) 0.78f else 0.7f)

@@ -197,7 +197,6 @@ const val HOME_WRITE_PIN_BUTTON_TAG = "home_write_pin_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
 const val HOME_NOTIFICATION_BUTTON_CONTENT_TAG = "home_notification_button_content"
 const val HOME_NOTIFICATION_BADGE_TAG = "home_notification_badge"
-const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
@@ -228,8 +227,8 @@ private class HomeScreenState(
  * 首页信息流页面。
  *
  * 页面顶部承载搜索、通知、账号入口等高频操作，主体是可分页的推荐信息流，底部可按设置显示可拖动刷新 FAB。
- * 设计上首页同时响应推荐算法、Duo3 账号入口迁移、更新公告、在线通知、作者动态和未读通知等状态，因此 UI 改动时要同时检查
- * `recommendationMode`、`duo3_home_account`、`showRefreshFab` 和账号面板相关路径。
+ * 设计上首页同时响应推荐算法、更新公告、在线通知、作者动态和未读通知等状态，因此 UI 改动时要同时检查
+ * `recommendationMode`、`showRefreshFab` 和账号面板相关路径。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -252,11 +251,9 @@ fun HomeScreen(
     val openWebViewUrl = rememberWebViewUrlOpener()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
     val autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
-    var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
     val createMenuBlurRadius by animateDpAsState(
         targetValue = if (showCreateMenu) 8.dp else 0.dp,
@@ -485,7 +482,6 @@ fun HomeScreen(
     val pageTurnTarget = rememberPageTurnTarget(
         listState = listState,
         enabled = isActive &&
-            !showAccountBottomSheet &&
             !showCreateMenu &&
             feedAuthorBlockRequest == null &&
             !showBlockByKeywordsDialog &&
@@ -506,17 +502,11 @@ fun HomeScreen(
             },
         ) {
         Scaffold(
-            modifier = if (duo3HomeAccount) {
-                Modifier
-                    .fillMaxSize()
-                    .blur(createMenuBlurRadius)
-            } else {
-                // master旧版需要pad掉状态栏
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                    .blur(createMenuBlurRadius)
-            },
+            // 整页避让状态栏
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .blur(createMenuBlurRadius),
             topBar = {
                 if (!showTopActions) {
                     return@Scaffold
@@ -525,179 +515,86 @@ fun HomeScreen(
                     GlassHomeTopBar(
                         provider = glassProvider,
                         source = topGlassSource,
-                        // duo3 布局整页不避让状态栏，这里自己留；旧版 Scaffold 已统一 pad 掉状态栏
-                        topInset = if (duo3HomeAccount) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() else 0.dp,
-                        searchHint = if (duo3HomeAccount) "搜索" else "搜索内容",
+                        // Scaffold 已统一 pad 掉状态栏
+                        topInset = 0.dp,
+                        searchHint = "搜索内容",
                         onSearch = { navigator.onNavigate(Search(query = "")) },
                         unreadCount = if (showUnreadBadge) unreadCount else 0,
                         onNotification = { navigator.onNavigate(Notification) },
                     )
                     return@Scaffold
                 }
-                if (duo3HomeAccount) {
-                    Box {
+                Surface(shadowElevation = 4.dp) {
+                    Row(
+                        modifier = Modifier
+                            .testTag(HOME_TOP_ACTIONS_TAG)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Surface(
                             modifier = Modifier
-                                .height(
-                                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
-                                ).fillMaxWidth(),
-                        ) { }
-                        Row(
-                            modifier = Modifier
-                                .testTag(HOME_TOP_ACTIONS_TAG)
-                                .fillMaxWidth()
-                                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                                .padding(16.dp, 8.dp, 16.dp, 0.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .weight(1f)
+                                .height(36.dp)
+                                .testTag(HOME_SEARCH_BUTTON_TAG),
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            onClick = {
+                                navigator.onNavigate(
+                                    Search(query = ""),
+                                )
+                            },
                         ) {
-                            Surface(
+                            Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .height(64.dp)
-                                    .testTag(HOME_SEARCH_BUTTON_TAG),
-                                shape = RoundedCornerShape(32.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                onClick = {
-                                    navigator.onNavigate(
-                                        Search(query = ""),
-                                    )
-                                },
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(start = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = "搜索",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "搜索",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        modifier = Modifier.weight(1f),
-                                    )
-
-                                    IconButton(
-                                        onClick = { showAccountBottomSheet = true },
-                                        modifier = Modifier
-                                            .size(64.dp)
-                                            .testTag(HOME_ACCOUNT_BUTTON_TAG),
-                                    ) {
-                                        Box(Modifier.padding(12.dp)) {
-                                            BadgedBox(
-                                                badge = {
-                                                    if (showUnreadBadge && unreadCount > 0) {
-                                                        Badge { }
-                                                    }
-                                                },
-                                            ) {
-                                                val avatarUrl = account.avatarUrl
-                                                if (avatarUrl != null) {
-                                                    AsyncImage(
-                                                        model = avatarUrl,
-                                                        contentDescription = "账号",
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier
-                                                            .size(40.dp)
-                                                            .border(
-                                                                0.5.dp,
-                                                                MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                                                                CircleShape,
-                                                            ).clip(CircleShape),
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        Icons.Default.AccountCircle,
-                                                        contentDescription = "账号",
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                        modifier = Modifier.size(40.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "搜索内容",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
                             }
                         }
-                    }
-                } else {
-                    Surface(shadowElevation = 4.dp) {
-                        Row(
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
                             modifier = Modifier
-                                .testTag(HOME_TOP_ACTIONS_TAG)
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(36.dp)
-                                    .testTag(HOME_SEARCH_BUTTON_TAG),
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                onClick = {
-                                    navigator.onNavigate(
-                                        Search(query = ""),
-                                    )
+                                .size(48.dp)
+                                .testTag(HOME_NOTIFICATION_BUTTON_TAG)
+                                .clickable(role = Role.Button) {
+                                    navigator.onNavigate(Notification)
                                 },
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = "搜索",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "搜索内容",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // 点击盒与内容盒分离，避免 IconButton 的裁剪边界截掉 BadgedBox 的 badge。
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag(HOME_NOTIFICATION_BUTTON_TAG)
-                                    .clickable(role = Role.Button) {
-                                        navigator.onNavigate(Notification)
-                                    },
+                                    .size(40.dp)
+                                    .testTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                // 点击盒与内容盒分离，避免 IconButton 的裁剪边界截掉 BadgedBox 的 badge。
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .testTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    BadgedBox(
-                                        badge = {
-                                            if (showUnreadBadge && unreadCount > 0) {
-                                                Badge(modifier = Modifier.testTag(HOME_NOTIFICATION_BADGE_TAG)) {
-                                                    Text("$unreadCount")
-                                                }
+                                BadgedBox(
+                                    badge = {
+                                        if (showUnreadBadge && unreadCount > 0) {
+                                            Badge(modifier = Modifier.testTag(HOME_NOTIFICATION_BADGE_TAG)) {
+                                                Text("$unreadCount")
                                             }
-                                        },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Notifications,
-                                            contentDescription = "通知",
-                                            tint = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                    }
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                    )
                                 }
                             }
                         }
@@ -705,19 +602,6 @@ fun HomeScreen(
                 }
             },
         ) { scaffoldPadding ->
-            if (duo3HomeAccount && showAccountBottomSheet) {
-                MyModalBottomSheet(
-                    onDismissRequest = { showAccountBottomSheet = false },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ) {
-                    AccountSettingScreen(
-                        innerPadding = PaddingValues(0.dp),
-                        unreadCount = unreadCount,
-                        showUnreadBadge = showUnreadBadge,
-                        onDismissRequest = { showAccountBottomSheet = false },
-                    )
-                }
-            }
 
             Box(
                 if (glassProvider != null && topGlassSource != null) {
@@ -997,6 +881,8 @@ fun HomeScreen(
                     },
                     preferenceName = "copyAll",
                     bottomAvoidance = 0.dp,
+                    // 调试专用按钮默认放左侧：放右侧会与“刷新”FAB 默认位置重叠，看起来像重复的玻璃圆钮
+                    initiallyOnLeft = true,
                 ) {
                     Icon(Icons.Default.CopyAll, contentDescription = "复制")
                 }

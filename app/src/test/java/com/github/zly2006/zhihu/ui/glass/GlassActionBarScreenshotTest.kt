@@ -74,6 +74,30 @@ class GlassActionPanelContrastTest {
     }
 }
 
+class GlassHeavyTintContrastTest {
+    private fun contrast(a: Color, b: Color): Float {
+        val la = a.luminance() + 0.05f
+        val lb = b.luminance() + 0.05f
+        return max(la, lb) / min(la, lb)
+    }
+
+    @Test
+    fun heavyTintKeepsSearchHintReadableOverListTitles() {
+        // 深色：surfaceContainer / onSurfaceVariant（占位字），背后是浅色列表标题经模糊后的平均色
+        val darkSurface = Color(0xFF211F26)
+        val darkHint = Color(0xFFCAC4D0)
+        val behindDark = lerp(Color(0xFF141218), Color(0xFFE6E0E9), 0.35f)
+        val heavy = glassHeavyTint(darkSurface, dark = true).compositeOver(behindDark)
+        val light = glassPanelTint(darkSurface).compositeOver(behindDark)
+        assertTrue("深色加厚底色应比普通玻璃对比度更高", contrast(darkHint, heavy) > contrast(darkHint, light))
+        assertTrue("深色搜索占位字对比度 >= 4.5", contrast(darkHint, heavy) >= 4.5f)
+        val lightSurface = Color(0xFFF3EDF7)
+        val lightHint = Color(0xFF49454F)
+        val behindLight = lerp(Color(0xFFFEF7FF), Color(0xFF1D1B20), 0.35f)
+        assertTrue("浅色搜索占位字对比度 >= 4.5", contrast(lightHint, glassHeavyTint(lightSurface, dark = false).compositeOver(behindLight)) >= 4.5f)
+    }
+}
+
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 abstract class GlassActionBarScreenshotBase(private val suffix: String) {
@@ -106,9 +130,8 @@ abstract class GlassActionBarScreenshotBase(private val suffix: String) {
         append("<p>全文完：最后一段必须能滚到悬浮按钮上方。</p>")
     }
 
-    private fun open(type: ArticleType, duo3: Boolean, vote: VoteUpState, favorited: Boolean, name: String, scrollToEnd: Boolean = false, midScrollSwipes: Int = 0) {
+    private fun open(type: ArticleType, vote: VoteUpState, favorited: Boolean, name: String, scrollToEnd: Boolean = false, midScrollSwipes: Int = 0) {
         val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
-        androidSettingsStore(ctx).putBoolean("duo3_article_actions", duo3)
         val article = Article(type = type, id = 900L + name.hashCode(), title = "液态玻璃底部操作栏")
         val vm = ArticleViewModel(article = article, httpClient = null)
         compose.runOnUiThread {
@@ -163,19 +186,17 @@ abstract class GlassActionBarScreenshotBase(private val suffix: String) {
     }
 
     @Test
-    fun answer() = open(ArticleType.Answer, duo3 = false, vote = VoteUpState.Up, favorited = true, name = "answer")
+    fun answer() = open(ArticleType.Answer, vote = VoteUpState.Up, favorited = true, name = "answer")
+
 
     @Test
-    fun answerDuo3() = open(ArticleType.Answer, duo3 = true, vote = VoteUpState.Up, favorited = false, name = "answer-duo3")
+    fun answerScrolledToEnd() = open(ArticleType.Answer, vote = VoteUpState.Neutral, favorited = false, name = "answer-end", scrollToEnd = true)
 
     @Test
-    fun answerScrolledToEnd() = open(ArticleType.Answer, duo3 = false, vote = VoteUpState.Neutral, favorited = false, name = "answer-end", scrollToEnd = true)
+    fun answerMidScroll() = open(ArticleType.Answer, vote = VoteUpState.Up, favorited = false, name = "answer-mid", midScrollSwipes = 1)
 
     @Test
-    fun answerMidScroll() = open(ArticleType.Answer, duo3 = false, vote = VoteUpState.Up, favorited = false, name = "answer-mid", midScrollSwipes = 1)
-
-    @Test
-    fun article() = open(ArticleType.Article, duo3 = false, vote = VoteUpState.Neutral, favorited = false, name = "article")
+    fun article() = open(ArticleType.Article, vote = VoteUpState.Neutral, favorited = false, name = "article")
 }
 
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-notnight-xxhdpi")

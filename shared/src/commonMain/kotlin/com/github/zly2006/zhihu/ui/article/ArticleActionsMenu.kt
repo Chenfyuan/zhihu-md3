@@ -70,13 +70,6 @@ private val VoteUpNeutralContentDark = Color(0xFF628DF7)
 internal fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme()) VoteUpNeutralContentDark else VoteUpNeutralContent
 
 @Composable
-internal fun voteUpNeutralContentDuo3() = if (ThemeManager.isDarkTheme()) {
-    VoteUpNeutralContentDark.harmonize(MaterialTheme.colorScheme.primary)
-} else {
-    VoteUpNeutralContent.harmonize(MaterialTheme.colorScheme.primary)
-}
-
-@Composable
 internal fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
     containerColor = voteUpNeutralContent(),
     contentColor = Color.White,

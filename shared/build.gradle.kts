@@ -36,9 +36,6 @@ plugins {
 configurations.configureEach {
     resolutionStrategy {
         force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
-        // org.tiqian 走 Central snapshot 仓（维护者手动发布的 dev 通道，正式 alpha
-        // 发布后钉回固定版本）。短缓存让新发布的 snapshot 十分钟内可见。
-        cacheChangingModulesFor(10, "minutes")
     }
 }
 
@@ -75,7 +72,7 @@ mapOf(
     "runKtlintFormatOverAndroidMainSourceSet" to
         listOf("src/androidMain/kotlin"),
     "runKtlintFormatOverAndroidFullSourceSet" to
-        listOf("src/androidFull/kotlin", "src/tiqianMarkdownMain/kotlin"),
+        listOf("src/androidFull/kotlin"),
     "runKtlintFormatOverJvmMainSourceSet" to listOf("src/jvmMain/kotlin"),
     "runKtlintFormatOverCommonMainSourceSet" to listOf("src/commonMain/kotlin"),
     "runKtlintFormatOverJvmTestSourceSet" to listOf("src/jvmTest/kotlin"),
@@ -131,11 +128,6 @@ kotlin {
         val androidFull =
             create("androidFull") {
                 dependsOn(commonMain.get())
-                kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
-                dependencies {
-                    implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
-                    implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
-                }
             }
         val androidLite =
             create("androidLite") {
@@ -210,14 +202,9 @@ kotlin {
                 implementation("org.jsoup:jsoup:1.22.2")
             }
         }
-        jvmMain {
-            kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
-        }
         jvmMain.dependencies {
             implementation("org.jetbrains.compose.ui:ui-backhandler-desktop:1.11.1")
             implementation("androidx.navigationevent:navigationevent:1.0.1")
-            implementation("org.tiqian:markdown-compose:0.1.0-SNAPSHOT")
-            implementation("org.tiqian:math-font-stix:0.1.0-SNAPSHOT")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")
             implementation("androidx.sqlite:sqlite-bundled:2.6.2")
             implementation(compose.desktop.currentOs)

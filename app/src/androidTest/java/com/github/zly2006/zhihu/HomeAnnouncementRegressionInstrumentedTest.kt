@@ -102,7 +102,6 @@ class HomeAnnouncementRegressionInstrumentedTest {
         val secondPin = authorTopicPin(secondPinId, "第二条开发动态")
         mockAuthorAnnouncements(firstPin, secondPin)
         composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
-            putBoolean("duo3_home_account", false)
             putBoolean("showRefreshFab", false)
             putBoolean("loginForRecommendation", true)
             putBoolean("survey_feedback_done", true)
@@ -138,7 +137,7 @@ class HomeAnnouncementRegressionInstrumentedTest {
 
         val thirdPinId = 2064848000000000000L
         mockAuthorAnnouncements(
-            authorTopicPin(thirdPinId, "关于来自123duo3的UI修改<br><p>详细投票说明</p>"),
+            authorTopicPin(thirdPinId, "关于来自外部作者的UI修改<br><p>详细投票说明</p>"),
             secondPin,
             firstPin,
         )
@@ -149,7 +148,7 @@ class HomeAnnouncementRegressionInstrumentedTest {
         composeRule.waitUntilHomeFeedTagExists(homeAuthorPollAnnouncementTag(secondPinId))
         composeRule.waitUntilHomeFeedTagExists(homeAuthorPollAnnouncementTag(thirdPinId))
         composeRule.onNodeWithTag(homeAuthorPollAnnouncementTag(firstPinId)).assertDoesNotExist()
-        composeRule.onNodeWithText("关于来自123duo3的UI修改").assertExists()
+        composeRule.onNodeWithText("关于来自外部作者的UI修改").assertExists()
         composeRule.onNodeWithText("详细投票说明").assertDoesNotExist()
     }
 

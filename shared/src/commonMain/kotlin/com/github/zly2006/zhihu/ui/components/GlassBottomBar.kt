@@ -53,6 +53,7 @@ interface GlassBottomBarProvider {
     fun Capsule(
         source: Any,
         modifier: Modifier,
+        heavy: Boolean = false,
         content: @Composable () -> Unit,
     )
 }

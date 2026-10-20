@@ -397,7 +397,6 @@ class ZhihuMainNavigationInstrumentedTest {
             .edit(commit = true) {
                 putString(START_DESTINATION_PREFERENCE_KEY, Home.name)
                 putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, deterministicBottomBarItems)
-                putBoolean("duo3_home_account", false)
                 putBoolean("bottomBarTapScrollToTop", false)
                 putBoolean("autoHideBottomBar", true)
             }
@@ -435,7 +434,6 @@ class ZhihuMainNavigationInstrumentedTest {
         activity.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE).edit(commit = true) {
             putString(START_DESTINATION_PREFERENCE_KEY, startDestination)
             putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, bottomBarItems)
-            putBoolean("duo3_home_account", false)
             putBoolean("bottomBarTapScrollToTop", false)
             putBoolean("autoHideBottomBar", false)
         }
@@ -449,7 +447,6 @@ class ZhihuMainNavigationInstrumentedTest {
         activity.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE).edit(commit = true) {
             putString(START_DESTINATION_PREFERENCE_KEY, Home.name)
             putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, deterministicBottomBarItems)
-            putBoolean("duo3_home_account", false)
             putBoolean("bottomBarTapScrollToTop", false)
             putBoolean("autoHideBottomBar", false)
         }

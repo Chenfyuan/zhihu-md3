@@ -26,6 +26,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -88,11 +89,10 @@ abstract class GlassHomeTopBarBase(private val suffix: String) {
         com.github.zly2006.zhihu.account.androidZhihuAccountStore(ctx)
         com.github.zly2006.zhihu.updater.UpdateManager.updateState.value =
             com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.NoUpdate
-        com.github.zly2006.zhihu.platform.androidSettingsStore(ctx).putBoolean("duo3_home_account", false)
         outDir.mkdirs()
     }
 
-    private fun items() = List(20) { i ->
+    private fun items() = List(60) { i ->
         FeedDisplayItem(
             title = "顶部玻璃叠字测试 $i：列表从搜索胶囊和通知圆钮后面滚过",
             summary = "第 $i 条摘要。用来检查玻璃模糊下文字仍可读，以及首条在顶部时不被挡住。",
@@ -165,6 +165,9 @@ abstract class GlassHomeTopBarBase(private val suffix: String) {
         val behind = compose.onAllNodesWithText("顶部玻璃叠字测试", substring = true, useUnmergedTree = true)
             .fetchSemanticsNodes().any { it.boundsInRoot.top < topBar.bottom && it.boundsInRoot.bottom > topBar.top }
         assertTrue("滚动后应有条目经过玻璃顶栏后面", behind)
+        // 离线时滚到列表尾会触发 loadMore，刷新 FAB 变成转圈、底部出现加载 footer；60 条只滚两屏不会到尾部
+        assertTrue("截图时不应处于加载中（无转圈）",
+            compose.onAllNodesWithContentDescription("刷新", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
         shoot("list-scrolled")
     }
 
