@@ -85,6 +85,7 @@ android {
     testOptions {
         unitTests {
             isReturnDefaultValues = true
+            isIncludeAndroidResources = true
         }
     }
 
@@ -261,6 +262,10 @@ dependencies {
     "fullImplementation"("com.hankcs:hanlp:portable-1.8.6")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation(platform("androidx.compose:compose-bom:2026.06.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.3.0")
     testImplementation("io.ktor:ktor-client-cio:$ktor")
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktor")
     testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
