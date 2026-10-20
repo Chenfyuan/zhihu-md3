@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -177,6 +178,8 @@ private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
  * 正文主路径使用 Compose Markdown 渲染。回答页还承载同题回答切换手势和对应转场状态，因此改动时要同时关注
  * `answerSwitchMode`、`buttonSkipAnswer`、`autoHideArticleBottomBar`、`titleAutoHide` 和 `answerDoubleTapAction`。
  */
+const val ARTICLE_GLASS_ACTION_BAR_TAG = "article_glass_action_bar"
+
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
@@ -211,6 +214,9 @@ fun ArticleScreen(
     val useDuo3ArticleActions by rememberObservedSetting(settings, "duo3_article_actions") {
         getBoolean("duo3_article_actions", false)
     }
+    // 底部操作栏液态玻璃：独立模糊源，只标记正文层，操作栏自身在层外，避免采样到自己
+    val glassProvider = LocalGlassBottomBarProvider.current
+    val actionBarGlassSource = glassProvider?.rememberSource()
     val buttonSkipAnswer by rememberObservedSetting(settings, "buttonSkipAnswer") { getBoolean("buttonSkipAnswer", true) }
     val autoHideSkipAnswerButton by rememberObservedSetting(settings, "autoHideSkipAnswerButton") {
         getBoolean("autoHideSkipAnswerButton", true)
@@ -548,6 +554,12 @@ fun ArticleScreen(
                 @Composable {
                     // 防止在导航动画和预测性返回手势过程中，底部操作栏闪烁。
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
+                    val glassBar = glassProvider != null && actionBarGlassSource != null
+                    val navBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+                    // 玻璃模式下中性胶囊底色改为半透明，选中态（赞/踩/收藏）颜色保持不变
+                    val neutralPill = if (glassBar) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHighest
+                    val neutralChip = MaterialTheme.colorScheme.surfaceContainer.let { if (glassBar) it.copy(alpha = 0.55f) else it }
+
                     @Composable
                     fun ActionBarContent() {
                         if (!useDuo3ArticleActions) {
@@ -555,9 +567,13 @@ fun ArticleScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
-                                    .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 8.dp)
-                                    .height(36.dp),
+                                    .then(
+                                        if (glassBar) {
+                                            Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                                        } else {
+                                            Modifier.padding(horizontal = 16.dp).padding(bottom = navBottom + 8.dp)
+                                        },
+                                    ).height(36.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Row(
@@ -665,15 +681,19 @@ fun ArticleScreen(
                             // ── duo3：药丸式动画投票与操作区 ────────────────────
                             Row(
                                 modifier = Modifier
-                                    .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 16.dp)
-                                    .padding(horizontal = 16.dp)
-                                    .fillMaxWidth(),
+                                    .then(
+                                        if (glassBar) {
+                                            Modifier.padding(horizontal = 6.dp, vertical = 6.dp)
+                                        } else {
+                                            Modifier.padding(bottom = navBottom + 16.dp).padding(horizontal = 16.dp)
+                                        },
+                                    ).fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(50))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                        .background(neutralPill)
                                         .padding(4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -681,7 +701,7 @@ fun ArticleScreen(
                                         visible = viewModel.voteUpState == VoteUpState.Neutral || viewModel.voteUpState == VoteUpState.Up,
                                     ) {
                                         val upBgColor by animateColorAsState(
-                                            targetValue = if (viewModel.voteUpState == VoteUpState.Up) voteUpNeutralContentDuo3() else MaterialTheme.colorScheme.surfaceContainer,
+                                            targetValue = if (viewModel.voteUpState == VoteUpState.Up) voteUpNeutralContentDuo3() else neutralChip,
                                         )
                                         val upContentColor by animateColorAsState(
                                             targetValue = if (viewModel.voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSurface,
@@ -721,7 +741,7 @@ fun ArticleScreen(
                                         visible = viewModel.voteUpState == VoteUpState.Neutral || viewModel.voteUpState == VoteUpState.Down,
                                     ) {
                                         val downBgColor by animateColorAsState(
-                                            targetValue = if (viewModel.voteUpState == VoteUpState.Down) voteUpNeutralContentDuo3() else MaterialTheme.colorScheme.surfaceContainer,
+                                            targetValue = if (viewModel.voteUpState == VoteUpState.Down) voteUpNeutralContentDuo3() else neutralChip,
                                         )
                                         val downContentColor by animateColorAsState(
                                             targetValue = if (viewModel.voteUpState == VoteUpState.Down) Color.White else MaterialTheme.colorScheme.onSurface,
@@ -764,7 +784,7 @@ fun ArticleScreen(
                                 Row(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(50))
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                        .background(neutralPill)
                                         .padding(end = 4.dp),
                                     horizontalArrangement = Arrangement.End,
                                 ) {
@@ -774,7 +794,7 @@ fun ArticleScreen(
                                             containerColor = if (viewModel.isFavorited) {
                                                 MaterialTheme.colorScheme.tertiaryContainer
                                             } else {
-                                                MaterialTheme.colorScheme.surfaceContainer
+                                                neutralChip
                                             },
                                             contentColor = if (viewModel.isFavorited) {
                                                 MaterialTheme.colorScheme.onTertiaryContainer
@@ -793,7 +813,7 @@ fun ArticleScreen(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                            containerColor = neutralChip,
                                             contentColor = MaterialTheme.colorScheme.onSurface,
                                         ),
                                     ) {
@@ -820,7 +840,19 @@ fun ArticleScreen(
                                         }
                                     },
                             ) {
-                                ActionBarContent()
+                                if (glassBar) {
+                                    glassProvider!!.Panel(
+                                        source = actionBarGlassSource!!,
+                                        modifier = Modifier
+                                            .padding(horizontal = 12.dp)
+                                            .padding(bottom = navBottom + 10.dp)
+                                            .testTag(ARTICLE_GLASS_ACTION_BAR_TAG),
+                                    ) {
+                                        ActionBarContent()
+                                    }
+                                } else {
+                                    ActionBarContent()
+                                }
                             }
                         }
                     }
@@ -828,7 +860,13 @@ fun ArticleScreen(
             },
         ) { innerPadding ->
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
-                Box {
+                Box(
+                    if (glassProvider != null && actionBarGlassSource != null) {
+                        glassProvider.contentSource(Modifier, actionBarGlassSource)
+                    } else {
+                        Modifier
+                    },
+                ) {
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)

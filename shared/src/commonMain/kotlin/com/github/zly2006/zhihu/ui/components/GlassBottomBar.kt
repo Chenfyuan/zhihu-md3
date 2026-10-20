@@ -44,6 +44,17 @@ interface GlassBottomBarProvider {
         modifier: Modifier,
         content: @Composable () -> Unit,
     )
+
+    /**
+     * 胶囊形玻璃面板（内容页底部操作栏等）。[source] 必须是面板之外、被 [contentSource] 标记的正文层，
+     * 面板自身不在该层内，避免采样到自己。Android 12 以下降级为半透明 surfaceContainer。
+     */
+    @Composable
+    fun Panel(
+        source: Any,
+        modifier: Modifier,
+        content: @Composable () -> Unit,
+    )
 }
 
 val LocalGlassBottomBarProvider = staticCompositionLocalOf<GlassBottomBarProvider?> { null }

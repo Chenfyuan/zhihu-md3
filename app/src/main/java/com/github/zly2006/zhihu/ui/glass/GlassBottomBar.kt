@@ -198,6 +198,42 @@ object AndroidGlassBottomBarProvider : GlassBottomBarProvider {
             }
         }
     }
+
+    @Composable
+    override fun Panel(
+        source: Any,
+        modifier: Modifier,
+        content: @Composable () -> Unit,
+    ) {
+        val cs = MaterialTheme.colorScheme
+        val supported = isRenderEffectSupported() && LocalLiquidGlassEnabled.current
+        Box(
+            modifier
+                .testTag(GLASS_ACTION_PANEL_TAG)
+                .then(
+                    if (supported) {
+                        Modifier.drawBackdrop(
+                            backdrop = source as Backdrop,
+                            shape = { Capsule() },
+                            effects = {
+                                vibrancy()
+                                blur(16.dp.toPx())
+                                lens(12.dp.toPx(), 24.dp.toPx())
+                            },
+                            highlight = { Highlight.Default.copy(alpha = 0.35f) },
+                            // 正文是文字/图片，需较厚的底色才能保证图标和数字可读
+                            onDrawSurface = { drawRect(glassPanelTint(cs.surfaceContainer)) },
+                        )
+                    } else {
+                        Modifier.clip(RoundedCornerShape(50)).background(glassPanelFallback(cs.surfaceContainer))
+                    },
+                ),
+        ) {
+            CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
+                content()
+            }
+        }
+    }
 }
 
 /** Robolectric 不支持 AGSL 时可关掉玻璃着色器，走降级外观 */
@@ -408,3 +444,11 @@ private fun LiquidTabs(
 /** 支持玻璃时用 backdrop 绘制；否则（Android 12 以下）退化为半透明实色胶囊 */
 private fun Modifier.glassOr(supported: Boolean, fallback: Color, glass: Modifier.() -> Modifier): Modifier =
     if (supported) glass() else clip(Capsule()).background(fallback)
+
+const val GLASS_ACTION_PANEL_TAG = "glass_action_panel"
+
+/** 真玻璃面板的表面叠色：半透明以透出模糊背景，同时足够厚以压住下面的文字。 */
+fun glassPanelTint(surface: Color): Color = surface.copy(alpha = 0.7f)
+
+/** Android 12 以下 / 关闭液态玻璃时的降级底色：接近不透明，保证可读。 */
+fun glassPanelFallback(surface: Color): Color = surface.copy(alpha = 0.92f)
