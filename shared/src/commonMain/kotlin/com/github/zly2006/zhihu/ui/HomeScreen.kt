@@ -152,8 +152,6 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.feedKeywordExtractionAvailable
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
-import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
 import com.github.zly2006.zhihu.util.Log
@@ -188,7 +186,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
-const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
 const val HOME_CREATE_FAB_TAG = "home_create_fab"
@@ -1087,15 +1084,11 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
-            val createFabOpacity = remember(settings) {
-                settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
-            }
             if (glassProvider != null && glassSource != null) {
                 glassProvider.Fab(
                     source = glassSource,
                     onClick = { showCreateMenu = !showCreateMenu },
                     modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
-                    opacity = createFabOpacity,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "创作")
                 }
@@ -1104,13 +1097,8 @@ fun HomeScreen(
                     modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
                     onClick = { showCreateMenu = !showCreateMenu },
                     shape = CircleShape,
-                    containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
-                    elevation = if (createFabOpacity < 1f) {
-                        FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                    } else {
-                        FloatingActionButtonDefaults.elevation()
-                    },
+                    containerColor = FloatingActionButtonDefaults.containerColor,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "创作")
                 }

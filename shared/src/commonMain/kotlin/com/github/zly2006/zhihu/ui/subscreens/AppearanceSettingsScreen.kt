@@ -103,7 +103,6 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
@@ -118,7 +117,6 @@ import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.ui.isLegacyWebViewSupported
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -130,12 +128,11 @@ const val DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY = "duo3_tiqian_math_font"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
-const val PREF_FAB_OPACITY = "fabOpacity"
 const val APPEARANCE_SETTINGS_RESET_FAB_POSITION_TAG = "appearance_reset_fab_position"
 
 /** 所有可拖动悬浮按钮保存的位置键（DraggableRefreshButton 的 preferenceName） */
 val DRAGGABLE_FAB_PREFERENCE_NAMES = listOf(
-    "fabRefresh", "copyAll", "collectionRandomRefresh", "fabPageTurnComment", "buttonSkipAnswer",
+    "fabRefresh", "copyAll", "fabPageTurnComment", "buttonSkipAnswer",
 )
 
 /** 清除悬浮按钮拖动位置，下次显示时回到默认位置 */
@@ -145,7 +142,6 @@ fun resetFloatingButtonPositions(settings: com.github.zly2006.zhihu.platform.Set
         settings.remove("$name-y")
     }
 }
-const val DEFAULT_FAB_OPACITY = 100
 const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
 const val DEFAULT_PAGE_TURN_PERCENT = 90
 const val PREF_PAGE_TURN_SWITCH_ANSWER = "pageTurnSwitchAnswer"
@@ -160,19 +156,14 @@ const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
 const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
-const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
 const val APPEARANCE_SETTINGS_TIQIAN_MARKDOWN_TAG = "appearanceSettings.tiqianMarkdown"
-const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
-const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
-const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
 const val APPEARANCE_SETTINGS_DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_TAG = "appearanceSettings.disableBottomSheetRoundedCorners"
 const val APPEARANCE_SETTINGS_LANDSCAPE_LIST_DETAIL_TAG = "appearanceSettings.landscapeListDetail"
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
-const val COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY = "collectionDirectBrowse"
 const val LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY = "landscapeListDetail"
 private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
 internal val contentFontSizeLevels = (50..120 step 5).toList() + (130..200 step 10).toList()
@@ -517,47 +508,6 @@ fun AppearanceSettingsScreen(
                     )
                 }
 
-                var showLuotianYiColorPicker by remember { mutableStateOf(false) }
-                val luotianYiColor = remember {
-                    Color(settings.getInt("luotianyi_color", 0xff_66CCFF.toInt()))
-                }
-
-                SettingItem(
-                    title = { Text("唤起浏览器主题色") },
-                    description = { Text("应用内浏览器的工具栏颜色") },
-                    onClick = { showLuotianYiColorPicker = true },
-                    endAction = {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(luotianYiColor)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                        )
-                    },
-                )
-
-                if (showLuotianYiColorPicker) {
-                    ColorPickerDialog(
-                        title = "选择浏览器主题色",
-                        initialColor = luotianYiColor,
-                        presetColors = listOf(
-                            Color(0xFF66CCFF),
-                            Color(0xFF2196F3),
-                            Color(0xFF4CAF50),
-                            Color(0xFFF44336),
-                            Color(0xFFFF9800),
-                            Color(0xFF9C27B0),
-                        ),
-                        onDismiss = { showLuotianYiColorPicker = false },
-                        onColorSelected = { color ->
-                            settings.putInt("luotianyi_color", color.toArgb())
-                            userMessages.showShortMessage("浏览器主题色已保存")
-                            showLuotianYiColorPicker = false
-                        },
-                    )
-                }
-
                 val currentIsDarkTheme = ThemeManager.isDarkTheme()
                 var showBackgroundColorPicker by remember { mutableStateOf(false) }
                 val backgroundColor = ThemeManager.getBackgroundColor()
@@ -614,27 +564,6 @@ fun AppearanceSettingsScreen(
                     settingKey = DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY,
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY),
-                )
-
-                var fabOpacity by remember {
-                    mutableIntStateOf(settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY))
-                }
-                SettingItem(
-                    title = { Text("悬浮按钮透明度") },
-                    description = { Text("控制所有悬浮按钮的透明度 ($fabOpacity%)。") },
-                    bottomAction = {
-                        Slider(
-                            value = fabOpacity.toFloat(),
-                            onValueChange = {
-                                val v = (it / 5).roundToInt() * 5
-                                fabOpacity = v
-                                settings.putInt(PREF_FAB_OPACITY, v)
-                            },
-                            valueRange = 10f..100f,
-                            steps = 17,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        )
-                    },
                 )
 
                 var fabPositionResetDone by remember { mutableStateOf(false) }
@@ -832,71 +761,6 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "回答页",
             ) {
-                val articleUseWebview = remember {
-                    mutableStateOf(settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false))
-                }
-                SettingItemWithSwitch(
-                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG),
-                    title = { Text("使用 WebView 显示文章") },
-                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
-                    checked = articleUseWebview.value,
-                    enabled = isLegacyWebViewSupported,
-                    onCheckedChange = {
-                        articleUseWebview.value = it
-                        settings.putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it)
-                    },
-                    settingKey = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY,
-                    highlightedKey = settingKey,
-                    bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
-                )
-
-                if (articleUseWebview.value && isLegacyWebViewSupported) {
-                    var customFontName by remember {
-                        mutableStateOf(settings.getStringOrNull("webviewCustomFontName"))
-                    }
-                    Column(
-                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        if (isWebViewCustomFontSupported) {
-                            SettingItem(
-                                modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                                title = {
-                                    Text(
-                                        "WebView 自定义字体",
-                                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
-                                    )
-                                },
-                                description = { Text(customFontName ?: "未设置") },
-                                bottomAction = {
-                                    WebViewCustomFontSettings(
-                                        customFontName = customFontName,
-                                        onCustomFontNameChange = { name ->
-                                            if (name == null) {
-                                                settings.remove("webviewCustomFontName")
-                                            } else {
-                                                settings.putString("webviewCustomFontName", name)
-                                            }
-                                            customFontName = name
-                                        },
-                                    )
-                                },
-                            )
-                        }
-
-                        val useHardwareAcceleration = remember { mutableStateOf(settings.getBoolean("webviewHardwareAcceleration", true)) }
-                        SettingItemWithSwitch(
-                            title = { Text("WebView 硬件加速") },
-                            description = { Text("提高渲染性能，可能导致兼容性问题。") },
-                            checked = useHardwareAcceleration.value,
-                            onCheckedChange = {
-                                useHardwareAcceleration.value = it
-                                settings.putBoolean("webviewHardwareAcceleration", it)
-                            },
-                        )
-                    }
-                }
-
                 val isTitleAutoHide = remember { mutableStateOf(settings.getBoolean("titleAutoHide", false)) }
                 SettingItemWithSwitch(
                     title = { Text("自动隐藏回答标题") },
@@ -1335,25 +1199,6 @@ fun AppearanceSettingsScreen(
                             }
                         }
                     },
-                )
-
-                val collectionDirectBrowse = remember {
-                    mutableStateOf(settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false))
-                }
-                SettingItemWithSwitch(
-                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG),
-                    title = { Text("收藏直达浏览（测试）") },
-                    description = {
-                        Text("测试功能，请谨慎开启，可能存在问题。开启后支持收藏夹直览、顺序模式与随机模式，欢迎提交 Issue。")
-                    },
-                    checked = collectionDirectBrowse.value,
-                    onCheckedChange = {
-                        collectionDirectBrowse.value = it
-                        settings.putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, it)
-                    },
-                    settingKey = COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY,
-                    highlightedKey = settingKey,
-                    bringIntoViewRequester = requesterFor(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY),
                 )
 
                 val tapToRefresh = remember { mutableStateOf(settings.getBoolean("bottomBarTapScrollToTop", true)) }

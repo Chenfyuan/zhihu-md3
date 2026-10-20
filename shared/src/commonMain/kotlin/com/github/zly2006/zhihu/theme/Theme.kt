@@ -76,18 +76,12 @@ fun ZhihuTheme(
     val darkTheme = ThemeManager.isDarkTheme()
     val platformDynamicColorScheme = platformDynamicColorScheme(darkTheme)
 
-    val baseColorScheme = when {
-        useDynamicColor && platformDynamicColorScheme != null -> platformDynamicColorScheme
-        !useDynamicColor -> {
-            dynamicColorScheme(
-                seedColor = ThemeManager.getCustomColor(),
-                isDark = darkTheme,
-                isAmoled = false,
-            )
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val baseColorScheme = resolveBaseColorScheme(
+        useDynamicColor = useDynamicColor,
+        platformDynamicColorScheme = platformDynamicColorScheme,
+        seedColor = ThemeManager.getCustomColor(),
+        darkTheme = darkTheme,
+    )
 
     val colorScheme = baseColorScheme.withOptionalBackground(customBackgroundColor)
 
@@ -109,3 +103,21 @@ expect fun platformDynamicColorScheme(darkTheme: Boolean): ColorScheme?
 
 @Composable
 expect fun PlatformSystemBarEffect(darkTheme: Boolean)
+
+/**
+ * 应用基础配色的唯一来源（不含自定义背景覆盖），供 [ZhihuTheme] 与 Compose 之外的调用方（如应用内浏览器工具栏）共用。
+ */
+fun resolveBaseColorScheme(
+    useDynamicColor: Boolean,
+    platformDynamicColorScheme: ColorScheme?,
+    seedColor: Color,
+    darkTheme: Boolean,
+): ColorScheme = when {
+    useDynamicColor && platformDynamicColorScheme != null -> platformDynamicColorScheme
+    !useDynamicColor -> dynamicColorScheme(seedColor = seedColor, isDark = darkTheme, isAmoled = false)
+    darkTheme -> DarkColorScheme
+    else -> LightColorScheme
+}
+
+/** 应用内浏览器（Custom Tab）工具栏色：与应用顶栏一致取 surface，Custom Tab 会据此自动选择可读的图标/文字颜色。 */
+fun customTabToolbarColor(scheme: ColorScheme): Color = scheme.surface

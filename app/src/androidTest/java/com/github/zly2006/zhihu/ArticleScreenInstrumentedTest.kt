@@ -82,7 +82,6 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -125,7 +124,6 @@ class ArticleScreenInstrumentedTest {
             .putBoolean("buttonSkipAnswer", true)
             .putBoolean("autoHideSkipAnswerButton", true)
             .putBoolean("pinAnswerDate", true)
-            .putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
             .putString("answerDoubleTapAction", AnswerDoubleTapAction.Ask.preferenceValue)
             .commit()
     }

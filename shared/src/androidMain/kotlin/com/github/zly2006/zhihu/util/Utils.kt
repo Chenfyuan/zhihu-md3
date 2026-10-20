@@ -17,6 +17,13 @@
 
 package com.github.zly2006.zhihu.util
 
+import android.os.Build
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.customTabToolbarColor
+import com.github.zly2006.zhihu.theme.resolveBaseColorScheme
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
@@ -84,7 +91,29 @@ fun telemetry(context: Context, usage: String) {
 }
 
 /**
- * 洛天依主题浏览器打开
+ * 非 Compose 环境下解析 Custom Tab 工具栏色：动态取色开启时读 Material You 系统中性色（surface 近似），
+ * 否则走 [resolveBaseColorScheme]（自定义种子色 / 内置配色），浅色与深色各自独立。
+ */
+fun resolveCustomTabToolbarArgb(context: Context, dark: Boolean): Int {
+    val snap = ThemeManager.snapshot()
+    if (snap.useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // Material You 系统色：neutral1_10 ≈ 浅色 surface，neutral1_900 ≈ 深色 surface
+        val id = if (dark) android.R.color.system_neutral1_900 else android.R.color.system_neutral1_10
+        return context.getColor(id)
+    }
+    return customTabToolbarColor(
+        resolveBaseColorScheme(
+            useDynamicColor = snap.useDynamicColor,
+            platformDynamicColorScheme = null,
+            seedColor = Color(snap.customColor),
+            darkTheme = dark,
+        ),
+    ).toArgb()
+}
+
+/**
+ * 用应用内浏览器（Custom Tab）打开链接。工具栏颜色跟随应用主题（动态取色/自定义种子色），
+ * 同时下发浅色与深色两套参数，并按应用的深浅色模式设置 colorScheme，保证深色下图标文字可读。
  */
 fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
     if (uri.host == "link.zhihu.com") {
@@ -93,14 +122,21 @@ fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
             return
         }
     }
-    val color = androidSettingsStore(context).getInt("luotianyi_color", 0xff_66CCFF.toInt())
+    fun toolbar(dark: Boolean): Int = resolveCustomTabToolbarArgb(context, dark)
     val intent = CustomTabsIntent
         .Builder()
-        .setDefaultColorSchemeParams(
-            CustomTabColorSchemeParams
-                .Builder()
-                .setToolbarColor(color)
-                .build(),
+        .setColorScheme(
+            when (ThemeManager.snapshot().themeMode) {
+                ThemeMode.LIGHT -> CustomTabsIntent.COLOR_SCHEME_LIGHT
+                ThemeMode.DARK -> CustomTabsIntent.COLOR_SCHEME_DARK
+                ThemeMode.SYSTEM -> CustomTabsIntent.COLOR_SCHEME_SYSTEM
+            },
+        ).setColorSchemeParams(
+            CustomTabsIntent.COLOR_SCHEME_LIGHT,
+            CustomTabColorSchemeParams.Builder().setToolbarColor(toolbar(false)).build(),
+        ).setColorSchemeParams(
+            CustomTabsIntent.COLOR_SCHEME_DARK,
+            CustomTabColorSchemeParams.Builder().setToolbarColor(toolbar(true)).build(),
         ).build()
     intent.launchUrl(context, uri)
 }

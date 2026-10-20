@@ -81,19 +81,6 @@ actual fun rememberNotificationEnvironment(
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = null
 
-@Composable
-actual fun ArticleWebViewContent(
-    article: Article,
-    html: String,
-    title: String,
-    scrollState: ScrollState,
-    rememberedScrollY: Int,
-    rememberedScrollYSync: Boolean,
-    onRememberedScrollYSyncChange: (Boolean) -> Unit,
-    onImageLoadFailed: () -> Unit,
-    onDoubleTap: () -> Unit,
-): Unit = error("$platformName 暂不支持文章 WebView 渲染")
-
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
 
 @Composable
@@ -163,11 +150,6 @@ actual fun rememberHomeIsDebuggable(): Boolean = nativeIsDesktop
 
 @Composable
 actual fun rememberAppVersionInfo(): String = nativeAppVersionName
-
-@Composable
-actual fun ZhihuHtmlWebViewContent(html: String): Unit = error("$platformName 暂不支持 HTML WebView 渲染")
-
-actual val isLegacyWebViewSupported: Boolean = false
 
 @Composable
 actual fun rememberBlocklistRuleImporter(
@@ -241,10 +223,6 @@ actual fun rememberBlocklistRuleExporter(): BlocklistRuleExporter {
         }
     }
 }
-
-@Composable
-actual fun QuestionDetailWebViewContent(questionId: Long, html: String): Unit =
-    error("$platformName 暂不支持问题详情 WebView 渲染")
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this
 

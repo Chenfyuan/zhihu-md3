@@ -49,11 +49,11 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 当前主线 UI 以 Material 3 为默认实现。改共同行为时优先放在 common runtime、状态或 shared component；改视觉时先确认影响的是共享组件、单个页面还是平台 adapter，避免只改入口而漏掉复用路径。
 
-主题状态集中在 `ThemeManager` 和平台 `ThemeSettingsRuntime`。`themeMode` 控制明暗，`useDynamicColor` 控制 Material You 动态取色，`customThemeColor` 在动态取色关闭后生效，`backgroundColorLight` / `backgroundColorDark` 控制背景色，`luotianyi_color` 控制应用内浏览器工具栏色。
+主题状态集中在 `ThemeManager` 和平台 `ThemeSettingsRuntime`。`themeMode` 控制明暗，`useDynamicColor` 控制 Material You 动态取色，`customThemeColor` 在动态取色关闭后生效，`backgroundColorLight` / `backgroundColorDark` 控制背景色；应用内浏览器（Custom Tab）工具栏色由 `resolveBaseColorScheme` + `customTabToolbarColor` 按当前主题（含深浅色）自动推导，不再单独可设。
 
 信息流卡片由 `FeedCard` 读取 `showFeedThumbnail`、`feedCardStyle`、`duo3_card_appearance`、`duo3_card_layout`、`duo3_card_large_title`。改这些 key 的语义时要同时查主页、关注、热榜、历史和搜索结果等复用卡片的页面。
 
-文章、问题详情和想法正文会根据 `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY` 在 WebView 与 Compose Markdown 之间切换；该常量当前值是 `webviewRender`。WebView 正文渲染只作为废弃路径保留，不再接受新功能；阅读体验新能力只接入 Compose Markdown 路径。Compose Markdown 路径依赖 `RenderMarkdown` 和 `SegmentedText` 的字号、行高和段间距设置。
+文章、问题详情和想法正文统一使用 Compose Markdown 渲染（WebView 正文渲染已移除；WebView 仅保留给登录/验证等网页场景）。该路径依赖 `RenderMarkdown` 和 `SegmentedText` 的字号、行高和段间距设置。
 
 ## 设置项影响图
 
@@ -70,7 +70,6 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `showFeedThumbnail` | Feed 卡片缩略图 | 信息流卡片是否显示图 | 由复用 `FeedCard` 的页面读取 |
 | `showRefreshFab` | 刷新 FAB | 首页/列表可拖动刷新按钮显示 | 123Duo3 总开关会关闭它 |
 | `feedCardStyle` | 信息流样式 | `card` 或 `divider` | 影响 FeedCard 外层布局 |
-| `webviewRender` | 使用 WebView 显示文章 | 文章、问题详情、想法正文渲染路径 | 常量名是 `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY` |
 | `webviewCustomFontName` | WebView 自定义字体 | WebView 注入字体 | 仅 WebView 路径 |
 | `webviewHardwareAcceleration` | WebView 硬件加速 | Android WebView layer type | 兼容性/性能相关 |
 | `titleAutoHide` | 自动隐藏回答标题 | 文章页顶部标题栏 | 查 `rememberArticleScreenSettingsState()` |
@@ -82,7 +81,6 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `answerSwitchSensitivity` | 回答切换灵敏度 | 上下/左右回答切换触发阈值 | 默认 1.0，数值越高触发距离越短；关闭手势时设置项隐藏 |
 | `answerDoubleTapAction` | 双击回答动作 | 双击正文后的动作 | 可在文章页内动态保存 |
 | `bottom_bar_items` | 底栏页面选择 | 主 pager 页集合和底栏按钮 | 始终经 `normalizeBottomBarSelection()` |
-| `collectionDirectBrowse` | 收藏直达浏览（测试） | 底栏收藏夹进入内容瀑布流，支持切换、删除、刷新及随机排序 | 默认关闭，关闭时保留原收藏夹列表入口 |
 
 ### 收藏直达浏览测试功能边界
 
@@ -169,3 +167,4 @@ rg "Account\\.AppearanceSettings|Account\\.RecommendSettings|NavDestination|Main
 rg "rememberSettingsStore|putBoolean|putString|putInt|getBoolean|getString|getInt" shared app
 rg "testTag\\(|nav_tab_|ACCOUNT_SETTINGS_|APPEARANCE_SETTINGS_" shared app
 ```
+

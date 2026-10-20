@@ -108,32 +108,20 @@ internal fun JsonObject?.booleanCompat(vararg keys: String): Boolean {
 /**
  * 想法正文的 HTML 渲染入口。
  *
- * 根据当前 WebView 设置选择平台 WebView 或 Compose Markdown 渲染。这样想法页、问题详情和文章页可以共享同一条“正文渲染模式”
- * 语义，避免用户打开 WebView 后只有部分内容类型生效；提椠 Markdown 开关同理，对这些内容类型一并生效。
+ * 统一使用 Compose Markdown 渲染；提椠 Markdown 开关对想法、问题详情和文章一并生效。
  */
 @Composable
 fun PinHtmlContent(html: String) {
     val settings = rememberSettingsStore()
-    if (settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
-        isLegacyWebViewSupported
-    ) {
-        ZhihuHtmlWebViewContent(html)
-    } else {
-        Spacer(Modifier.height(10.dp))
-        RenderMarkdown(
-            html = html,
-            modifier = Modifier.questionSelectionWorkaround(),
-            selectable = true,
-            enableScroll = false,
-            useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
-        )
-    }
+    Spacer(Modifier.height(10.dp))
+    RenderMarkdown(
+        html = html,
+        modifier = Modifier.questionSelectionWorkaround(),
+        selectable = true,
+        enableScroll = false,
+        useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
+    )
 }
-
-expect val isLegacyWebViewSupported: Boolean
-
-@Composable
-expect fun ZhihuHtmlWebViewContent(html: String)
 
 @Composable
 internal fun <T> rememberObservedSetting(
@@ -154,26 +142,13 @@ internal fun <T> rememberObservedSetting(
 @Composable
 expect fun consumePendingCommentId(content: NavDestination): String?
 
-@Composable
-expect fun ArticleWebViewContent(
-    article: Article,
-    html: String,
-    title: String,
-    scrollState: ScrollState,
-    rememberedScrollY: Int,
-    rememberedScrollYSync: Boolean,
-    onRememberedScrollYSyncChange: (Boolean) -> Unit,
-    onImageLoadFailed: () -> Unit,
-    onDoubleTap: () -> Unit,
-)
-
 /** 过滤部分设备文本选择菜单中的非预期系统项。 */
 expect fun Modifier.articleMarkdownSelectionWorkaround(): Modifier
 
 /**
  * 问题描述正文的渲染入口。
  *
- * 与文章和想法一致，优先遵循用户选择的 WebView/Markdown 渲染模式；当前平台不支持问题详情 WebView 时回落到 Compose Markdown。
+ * 与文章和想法一致，使用 Compose Markdown 渲染。
  */
 @Composable
 fun QuestionDetailContent(
@@ -181,29 +156,14 @@ fun QuestionDetailContent(
     html: String,
 ) {
     val settings = rememberSettingsStore()
-    if (settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
-        isLegacyWebViewSupported
-    ) {
-        QuestionDetailWebViewContent(
-            questionId = questionId,
-            html = html,
-        )
-    } else {
-        RenderMarkdown(
-            html = html,
-            modifier = Modifier.questionSelectionWorkaround(),
-            selectable = true,
-            enableScroll = false,
-            useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
-        )
-    }
+    RenderMarkdown(
+        html = html,
+        modifier = Modifier.questionSelectionWorkaround(),
+        selectable = true,
+        enableScroll = false,
+        useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
+    )
 }
-
-@Composable
-expect fun QuestionDetailWebViewContent(
-    questionId: Long,
-    html: String,
-)
 
 interface ArticleBrowserOpener {
     operator fun invoke(article: Article)
@@ -271,7 +231,6 @@ data class ZhihuMainPreferenceSnapshot(
     val duo3HomeAccount: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
-    val collectionDirectBrowseEnabled: Boolean,
     val landscapeListDetailEnabled: Boolean,
     val selectedBottomBarItemKeys: List<String>,
     val startDestination: TopLevelDestination,
@@ -291,7 +250,6 @@ class ZhihuMainPreferenceState(
     val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
     val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
     val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
-    val collectionDirectBrowseEnabled: Boolean get() = snapshot.collectionDirectBrowseEnabled
     val landscapeListDetailEnabled: Boolean get() = snapshot.landscapeListDetailEnabled
     val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
     val startDestination: TopLevelDestination get() = snapshot.startDestination

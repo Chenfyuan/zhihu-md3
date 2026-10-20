@@ -175,8 +175,7 @@ private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
  *
  * 页面负责加载知乎回答或专栏文章，展示标题、作者、正文、附件视频、评论入口、分享/复制/浏览器打开等底部操作，
  * 正文主路径使用 Compose Markdown 渲染。回答页还承载同题回答切换手势和对应转场状态，因此改动时要同时关注
- * `answerSwitchMode`、`buttonSkipAnswer`、`autoHideArticleBottomBar`、`titleAutoHide`、`answerDoubleTapAction` 和
- * `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY`。
+ * `answerSwitchMode`、`buttonSkipAnswer`、`autoHideArticleBottomBar`、`titleAutoHide` 和 `answerDoubleTapAction`。
  */
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -220,9 +219,6 @@ fun ArticleScreen(
         AnswerDoubleTapAction.fromPreference(
             getString(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, AnswerDoubleTapAction.Ask.preferenceValue),
         )
-    }
-    val useWebView by rememberObservedSetting(settings, ARTICLE_USE_WEBVIEW_PREFERENCE_KEY) {
-        getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
     }
     val useTiqianMarkdown by rememberObservedSetting(settings, DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY) {
         getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)
@@ -278,7 +274,7 @@ fun ArticleScreen(
         answerSwitchMode = answerSwitchMode,
     )
     val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
-    val pageTurnActive = !(useWebView && isLegacyWebViewSupported) &&
+    val pageTurnActive =
         !showComments &&
         !showCollectionDialog &&
         !showActionsMenu &&
@@ -996,68 +992,37 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
-                            if (useWebView && isLegacyWebViewSupported) {
-                                // WebView 正文渲染已经废弃，只保留为紧急回退路径；正文外 UI 不再为它单独分支。
-                                ArticleWebViewContent(
-                                    article = article,
-                                    html = viewModel.content,
-                                    title = viewModel.title,
-                                    scrollState = scrollState,
-                                    rememberedScrollY = viewModel.rememberedScrollY,
-                                    rememberedScrollYSync = viewModel.rememberedScrollYSync,
-                                    onRememberedScrollYSyncChange = { viewModel.rememberedScrollYSync = it },
-                                    onImageLoadFailed = { userMessages.showMessage("图片加载失败，请向开发者反馈") },
-                                    onDoubleTap = ::handleAnswerDoubleTap,
-                                )
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.End,
-                                ) {
-                                    if (!pinAnswerDate) {
-                                        DateTexts()
-                                    }
-                                    if (viewModel.ipInfo != null) {
-                                        Text(
-                                            "IP属地：${viewModel.ipInfo}",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            style = MaterialTheme.typography.labelSmall,
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height((16 + 36).dp))
-                            } else {
-                                RenderMarkdown(
-                                    html = viewModel.content,
-                                    modifier = Modifier
-                                        .testTag("article_content")
-                                        .articleMarkdownSelectionWorkaround(),
-                                    scrollState = scrollState,
-                                    selectable = true,
-                                    enableScroll = false,
-                                    useTiqianRenderer = useTiqianMarkdown,
-                                    header = {},
-                                    footer = {
-                                        ArticleVideoAttachmentContent(viewModel.attachment)
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.End,
-                                        ) {
-                                            if (!pinAnswerDate) {
-                                                DateTexts()
-                                            }
-                                            if (viewModel.ipInfo != null) {
-                                                Text(
-                                                    "IP属地：${viewModel.ipInfo}",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                )
-                                            }
+                            RenderMarkdown(
+                                html = viewModel.content,
+                                modifier = Modifier
+                                    .testTag("article_content")
+                                    .articleMarkdownSelectionWorkaround(),
+                                scrollState = scrollState,
+                                selectable = true,
+                                enableScroll = false,
+                                useTiqianRenderer = useTiqianMarkdown,
+                                header = {},
+                                footer = {
+                                    ArticleVideoAttachmentContent(viewModel.attachment)
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.End,
+                                    ) {
+                                        if (!pinAnswerDate) {
+                                            DateTexts()
                                         }
-                                        ContentEndMarker()
-                                        Spacer(modifier = Modifier.height((16 + 36).dp))
-                                    },
-                                )
-                            }
+                                        if (viewModel.ipInfo != null) {
+                                            Text(
+                                                "IP属地：${viewModel.ipInfo}",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                style = MaterialTheme.typography.labelSmall,
+                                            )
+                                        }
+                                    }
+                                    ContentEndMarker()
+                                    Spacer(modifier = Modifier.height((16 + 36).dp))
+                                },
+                            )
                         }
                     }
                     Spacer(

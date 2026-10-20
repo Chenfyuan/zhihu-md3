@@ -227,12 +227,3 @@ private fun loadDesktopAboutLibrariesJson(): String? {
     }
 }
 
-actual val isWebViewCustomFontSupported: Boolean = false
-
-@Composable
-actual fun WebViewCustomFontSettings(
-    customFontName: String?,
-    onCustomFontNameChange: (String?) -> Unit,
-) {
-    error("$platformName 暂不支持 WebView 自定义字体设置")
-}

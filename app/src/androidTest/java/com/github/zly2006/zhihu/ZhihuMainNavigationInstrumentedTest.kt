@@ -27,21 +27,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.click
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -50,7 +45,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -90,7 +84,6 @@ import com.github.zly2006.zhihu.ui.components.PageTurnCommand
 import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
 import com.github.zly2006.zhihu.ui.rememberAndroidZhihuMainPreferenceState
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -391,24 +384,6 @@ class ZhihuMainNavigationInstrumentedTest {
 
         composeRule.waitUntilTabSelected("nav_tab_mycollections")
         composeRule.onNodeWithTag("collection_screen_title").assertIsDisplayed()
-        composeRule.onNodeWithTag("collection_browse_title").assertDoesNotExist()
-    }
-
-    /**
-     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/609
-     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/611
-     */
-    @Test
-    fun collectionsTabUsesDirectBrowseOnlyWhenEnabled() {
-        composeRule.launchZhihuMain(
-            startDestination = MyCollections.name,
-            bottomBarItems = collectionBottomBarItems,
-            collectionDirectBrowseEnabled = true,
-        )
-
-        composeRule.waitUntilTabSelected("nav_tab_mycollections")
-        composeRule.onNodeWithTag("collection_browse_title").assertIsDisplayed()
-        composeRule.onNodeWithTag("collection_screen_title").assertDoesNotExist()
     }
 
     /**
@@ -425,7 +400,6 @@ class ZhihuMainNavigationInstrumentedTest {
                 putBoolean("duo3_home_account", false)
                 putBoolean("bottomBarTapScrollToTop", false)
                 putBoolean("autoHideBottomBar", true)
-                putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false)
             }
         val dispatcher = PageTurnDispatcher()
         composeRule.activity.setContent { }
@@ -457,7 +431,6 @@ class ZhihuMainNavigationInstrumentedTest {
     private fun MainActivityComposeRule.launchZhihuMain(
         startDestination: String,
         bottomBarItems: Set<String> = deterministicBottomBarItems,
-        collectionDirectBrowseEnabled: Boolean = false,
     ) {
         activity.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE).edit(commit = true) {
             putString(START_DESTINATION_PREFERENCE_KEY, startDestination)
@@ -465,7 +438,6 @@ class ZhihuMainNavigationInstrumentedTest {
             putBoolean("duo3_home_account", false)
             putBoolean("bottomBarTapScrollToTop", false)
             putBoolean("autoHideBottomBar", false)
-            putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, collectionDirectBrowseEnabled)
         }
         setZhihuMainContent()
     }
@@ -480,7 +452,6 @@ class ZhihuMainNavigationInstrumentedTest {
             putBoolean("duo3_home_account", false)
             putBoolean("bottomBarTapScrollToTop", false)
             putBoolean("autoHideBottomBar", false)
-            putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false)
         }
         activity.setContent { }
         waitForIdle()

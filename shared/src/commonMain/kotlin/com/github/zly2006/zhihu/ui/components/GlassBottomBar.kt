@@ -35,14 +35,13 @@ interface GlassBottomBarProvider {
 
     /**
      * 圆形玻璃悬浮按钮。必须画在 [contentSource] 标记的模糊层之外（与底栏同层），
-     * 否则会采样到自己。opacity 控制玻璃底色透明度（对应 PREF_FAB_OPACITY）。
+     * 否则会采样到自己。玻璃底色透明度固定。
      */
     @Composable
     fun Fab(
         source: Any,
         onClick: () -> Unit,
         modifier: Modifier,
-        opacity: Float,
         content: @Composable () -> Unit,
     )
 }

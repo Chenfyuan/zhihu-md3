@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.viewmodel.collectionRandomPageOffsets
 import com.github.zly2006.zhihu.viewmodel.shouldReuseCollectionRandomSession
@@ -25,46 +24,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class CollectionBrowseSelectionTest {
-    private fun collection(id: String, isDefault: Boolean = false, title: String = "c-$id") =
-        Collection(id = id, isDefault = isDefault, title = title)
-
-    @Test
-    fun picksDefaultCollectionWhenPresent() {
-        val collections = listOf(
-            collection("c1"),
-            collection("c2", isDefault = true),
-            collection("c3"),
-        )
-        assertEquals("c2", pickDefaultCollectionId(collections))
-    }
-
-    @Test
-    fun fallsBackToFirstWhenNoDefault() {
-        val collections = listOf(
-            collection("c1"),
-            collection("c2"),
-        )
-        assertEquals("c1", pickDefaultCollectionId(collections))
-    }
-
-    @Test
-    fun returnsNullForEmptyList() {
-        assertNull(pickDefaultCollectionId(emptyList()))
-    }
-
-    @Test
-    fun picksFirstDefaultWhenMultipleDefaults() {
-        val collections = listOf(
-            collection("c1", isDefault = true),
-            collection("c2", isDefault = true),
-        )
-        assertEquals("c1", pickDefaultCollectionId(collections))
-    }
-
+class CollectionRefreshAndRandomTest {
     @Test
     fun refreshesWhenCollectionPageBecomesActiveAgain() {
         assertTrue(
@@ -103,61 +65,6 @@ class CollectionBrowseSelectionTest {
                 refreshOnNextActivation = true,
             ),
         )
-    }
-
-    @Test
-    fun randomModeIsStableAndKeepsEveryLoadedItem() {
-        val items = List(12) { index -> displayItem("item-$index") }
-
-        val first = orderCollectionItems(items, true, 42)
-        val second = orderCollectionItems(items, true, 42)
-        val nextRound = orderCollectionItems(items, true, 43)
-
-        assertEquals(first, second)
-        assertEquals(items.map { it.stableKey }.toSet(), first.map { it.stableKey }.toSet())
-        assertNotEquals(first, nextRound)
-    }
-
-    @Test
-    fun appendingNextPageKeepsPreviouslyLoadedRandomOrder() {
-        val firstPage = List(12) { index -> displayItem("first-$index") }
-        val nextPage = List(8) { index -> displayItem("next-$index") }
-        val allKeys = (firstPage + nextPage).mapTo(mutableSetOf()) { it.stableKey }
-
-        listOf(Int.MIN_VALUE, -1, 0, 1, 42, Int.MAX_VALUE).forEach { seed ->
-            val initialOrder = orderCollectionItems(firstPage, true, seed)
-            val orderAfterAppend = orderCollectionItems(
-                items = firstPage + nextPage,
-                randomMode = true,
-                randomSeed = seed,
-                previousRandomOrderKeys = initialOrder.map { it.stableKey },
-            )
-
-            assertEquals(
-                initialOrder.map { it.stableKey },
-                orderAfterAppend.take(initialOrder.size).map { it.stableKey },
-            )
-            assertEquals(
-                nextPage.mapTo(mutableSetOf()) { it.stableKey },
-                orderAfterAppend.drop(initialOrder.size).mapTo(mutableSetOf()) { it.stableKey },
-            )
-            assertEquals(allKeys, orderAfterAppend.mapTo(mutableSetOf()) { it.stableKey })
-        }
-    }
-
-    @Test
-    fun restoringRandomSessionKeepsTheExactLoadedOrder() {
-        val items = List(20) { index -> displayItem("item-$index") }
-        val initialOrder = orderCollectionItems(items, true, 42)
-
-        val restoredOrder = orderCollectionItems(
-            items = items,
-            randomMode = true,
-            randomSeed = 42,
-            previousRandomOrderKeys = initialOrder.map { it.stableKey },
-        )
-
-        assertEquals(initialOrder.map { it.stableKey }, restoredOrder.map { it.stableKey })
     }
 
     @Test

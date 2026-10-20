@@ -313,74 +313,6 @@ class CustomWebView : WebView {
         evaluateJavascript(js, null)
     }
 
-    fun loadZhihu(
-        url: String,
-        document: Document,
-        additionalStyle: String = "",
-    ) {
-        if (this.document?.html() == document.html()) {
-            // same content
-            return
-        }
-        Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
-        val settings = androidSettingsStore(context)
-        val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
-        val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
-        val customFontFile = java.io.File(context.filesDir, "custom_font")
-        val customFontName = settings.getStringOrNull("webviewCustomFontName")
-        val customFontCss = if (customFontName != null && customFontFile.exists()) {
-            val fontName = customFontName
-            val format = if (fontName.endsWith(".otf", ignoreCase = true)) "opentype" else "truetype"
-            "@font-face { font-family: 'ZhihuCustomFont'; src: url('https://zhihu-plus.internal/user-files/custom_font') format('$format'); }\n" +
-                "body { font-family: 'ZhihuCustomFont', sans-serif; }"
-        } else {
-            ""
-        }
-
-        val bodyClass = if (ThemeManager.isDarkTheme) " class=\"dark-theme\" " else ""
-
-        loadDataWithBaseURL(
-            url,
-            """
-            <head>
-            <link rel="stylesheet" href="https://zhihu-plus.internal/assets/stylesheet.css">
-            <viewport content="width=device-width, initial-scale=1.0">
-            </viewport>
-            <style>
-            body {
-                font-size: $fontSize%;
-                line-height: ${lineHeight / 100f};
-            }
-            $customFontCss
-            ${additionalStyle.replace("\n", "")}
-            </style>
-            </head>
-            <body $bodyClass>
-            ${document.body().html()}
-            </body>
-            """.trimIndent(),
-            "text/html",
-            "utf-8",
-            null,
-        )
-        this.document = document
-    }
-
-    fun loadZhihu(
-        url: String,
-        bodyHtml: String,
-        title: String,
-        additionalStyle: String = "",
-    ) {
-        loadZhihu(
-            url = url,
-            document = Jsoup.parse(bodyHtml).apply {
-                title(title)
-            },
-            additionalStyle = additionalStyle,
-        )
-    }
-
     override fun startActionMode(callback: ActionMode.Callback): ActionMode? =
         super.startActionMode(CustomActionModeCallback(callback))
 
@@ -505,14 +437,7 @@ private class UserFilesPathHandler(
     override fun handle(path: String): WebResourceResponse? {
         val file = java.io.File(context.filesDir, path)
         if (!file.exists() || !file.isFile) return null
-        val settings = androidSettingsStore(context)
-        val mimeType = when {
-            path == "custom_font" -> {
-                val fontName = settings.getString("webviewCustomFontName", "")
-                if (fontName.endsWith(".otf", ignoreCase = true)) "font/otf" else "font/ttf"
-            }
-            else -> "application/octet-stream"
-        }
+        val mimeType = "application/octet-stream"
         return WebResourceResponse(
             mimeType,
             null,

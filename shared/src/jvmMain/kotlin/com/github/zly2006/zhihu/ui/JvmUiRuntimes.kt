@@ -218,28 +218,7 @@ actual fun rememberAppVersionInfo(): String = desktopVersionName()
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = null
 
-@Composable
-actual fun ArticleWebViewContent(
-    article: Article,
-    html: String,
-    title: String,
-    scrollState: ScrollState,
-    rememberedScrollY: Int,
-    rememberedScrollYSync: Boolean,
-    onRememberedScrollYSyncChange: (Boolean) -> Unit,
-    onImageLoadFailed: () -> Unit,
-    onDoubleTap: () -> Unit,
-): Unit = error("$platformName 暂不支持文章 WebView 渲染")
-
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
-
-/**
- * 桌面端不支持 WebView
- */
-@Composable
-actual fun ZhihuHtmlWebViewContent(html: String): Unit = error("$platformName 暂不支持 HTML WebView 渲染")
-
-actual val isLegacyWebViewSupported: Boolean = false
 
 @Composable
 actual fun rememberNotificationEnvironment(
@@ -248,14 +227,6 @@ actual fun rememberNotificationEnvironment(
     DesktopPaginationEnvironment(
         notificationSettingsStore = settingsStore,
     )
-}
-
-@Composable
-actual fun QuestionDetailWebViewContent(
-    questionId: Long,
-    html: String,
-) {
-    error("$platformName 暂不支持问题详情 WebView 渲染")
 }
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this

@@ -158,15 +158,13 @@ object AndroidGlassBottomBarProvider : GlassBottomBarProvider {
         source: Any,
         onClick: () -> Unit,
         modifier: Modifier,
-        opacity: Float,
         content: @Composable () -> Unit,
     ) {
         val cs = MaterialTheme.colorScheme
-        val a = opacity.coerceIn(0.1f, 1f)
         val supported = isRenderEffectSupported() && LocalLiquidGlassEnabled.current
         // 降级：半透明 surfaceContainer，保证图标可读；真玻璃：vibrancy+blur，表面再叠一层带透明度的底色
-        val fallback = cs.surfaceContainer.copy(alpha = (0.92f * a).coerceIn(0.35f, 0.96f))
-        val tint = cs.surfaceContainer.copy(alpha = (0.42f * a).coerceIn(0.18f, 0.72f))
+        val fallback = cs.surfaceContainer.copy(alpha = 0.92f)
+        val tint = cs.surfaceContainer.copy(alpha = 0.42f)
         Box(
             modifier
                 .size(56.dp)

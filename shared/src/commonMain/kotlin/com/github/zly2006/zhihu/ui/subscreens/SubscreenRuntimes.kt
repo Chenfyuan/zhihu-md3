@@ -20,14 +20,6 @@ package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.StateFlow
 
-expect val isWebViewCustomFontSupported: Boolean
-
-@Composable
-expect fun WebViewCustomFontSettings(
-    customFontName: String?,
-    onCustomFontNameChange: (String?) -> Unit,
-)
-
 sealed interface SystemUpdateState {
     data object NoUpdate : SystemUpdateState
 

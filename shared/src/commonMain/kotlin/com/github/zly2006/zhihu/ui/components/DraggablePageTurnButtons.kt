@@ -81,11 +81,9 @@ import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.rememberObservedSetting
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_CONTENT_END_MARKER
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_PAGE_TURN_GUIDE
-import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CONTENT_END_MARKER
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
@@ -248,12 +246,8 @@ fun DraggablePageTurnButtons(
         clampPositionToViewport()
     }
     val hapticFeedback = LocalHapticFeedback.current
-    val fabOpacityValue by rememberObservedSetting(settings, PREF_FAB_OPACITY) {
-        getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY)
-    }
-    val opacityFraction = fabOpacityValue.coerceIn(10, 100) / 100f
-    val fabColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction)
-    val iconTint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction)
+    val fabColor = FloatingActionButtonDefaults.containerColor
+    val iconTint = MaterialTheme.colorScheme.onPrimaryContainer
     var dragging by remember { mutableStateOf(false) }
 
     Column(

@@ -106,45 +106,6 @@ actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = remember(content) { AndroidArticleNavigationHandoff.consumeCommentId(content) }
 
-@Composable
-actual fun ArticleWebViewContent(
-    article: Article,
-    html: String,
-    title: String,
-    scrollState: ScrollState,
-    rememberedScrollY: Int,
-    rememberedScrollYSync: Boolean,
-    onRememberedScrollYSyncChange: (Boolean) -> Unit,
-    onImageLoadFailed: () -> Unit,
-    onDoubleTap: () -> Unit,
-) {
-    val coroutineScope = rememberCoroutineScope()
-    WebviewComp(
-        onDoubleTap = onDoubleTap,
-        scrollState = scrollState,
-    ) {
-        it.isVerticalScrollBarEnabled = false
-        it.setupUpWebviewClient {
-            if (!rememberedScrollYSync) {
-                coroutineScope.launch {
-                    while (scrollState.maxValue < rememberedScrollY) {
-                        delay(100)
-                    }
-                    Log.i("zhihu-scroll", "scroll to $rememberedScrollY, max= ${scrollState.maxValue}, sync on")
-                    scrollState.animateScrollTo(rememberedScrollY)
-                    onRememberedScrollYSyncChange(true)
-                }
-            }
-        }
-        it.contentId = article.id.toString()
-        it.loadZhihu(
-            "https://www.zhihu.com/${article.type}/${article.id}",
-            prepareContentDocument(html, onImageLoadFailed),
-            title,
-        )
-    }
-}
-
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
@@ -237,20 +198,6 @@ actual fun rememberBlocklistRuleExporter(): BlocklistRuleExporter {
 }
 
 @Composable
-actual fun ZhihuHtmlWebViewContent(html: String) {
-    WebviewComp {
-        it.isVerticalScrollBarEnabled = false
-        it.setupUpWebviewClient()
-        it.loadZhihu(
-            "https://www.zhihu.com",
-            Jsoup.parse(html),
-        )
-    }
-}
-
-actual val isLegacyWebViewSupported: Boolean = true
-
-@Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
     remember(emojiKeys) { createEmojiInlineContent(emojiKeys) }
 
@@ -322,19 +269,6 @@ object AndroidArticleNavigationHandoff {
         if (identity != pendingContentIdentity) return ContentOpenFrom.UNKNOWN
         pendingContentIdentity = null
         return pendingContentOpenFrom.also { pendingContentOpenFrom = null } ?: ContentOpenFrom.UNKNOWN
-    }
-}
-
-@Composable
-actual fun QuestionDetailWebViewContent(
-    questionId: Long,
-    html: String,
-) {
-    WebviewComp {
-        it.loadZhihu(
-            "https://www.zhihu.com/question/$questionId",
-            Jsoup.parse(html),
-        )
     }
 }
 

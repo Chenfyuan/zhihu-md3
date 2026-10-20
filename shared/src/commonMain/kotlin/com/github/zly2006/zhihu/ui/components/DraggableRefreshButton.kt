@@ -44,8 +44,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
-import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import kotlin.math.roundToInt
 
 /**
@@ -117,10 +115,6 @@ fun DraggableRefreshButton(
     val displayedOffsetX = if (pressing) offsetX else animatedOffsetX
     val displayedOffsetY = if (pressing) visibleOffsetY else animatedOffsetY
     val hapticFeedback = LocalHapticFeedback.current
-
-    val opacityFraction = remember(settings) {
-        settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
-    }
     val dragModifier = modifier
         .offset { IntOffset(displayedOffsetX.roundToInt(), displayedOffsetY.roundToInt()) }
         .pointerInput(Unit) {
@@ -161,20 +155,14 @@ fun DraggableRefreshButton(
             source = glassSource,
             onClick = onClick,
             modifier = dragModifier,
-            opacity = opacityFraction,
             content = content,
         )
     } else {
         FloatingActionButton(
             onClick = onClick,
             shape = CircleShape,
-            containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction),
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction),
-            elevation = if (opacityFraction < 1f) {
-                FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-            } else {
-                FloatingActionButtonDefaults.elevation()
-            },
+            containerColor = FloatingActionButtonDefaults.containerColor,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = dragModifier,
             content = content,
         )
