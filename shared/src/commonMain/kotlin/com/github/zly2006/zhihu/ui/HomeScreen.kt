@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
 import com.github.zly2006.zhihu.ui.components.GlassHomeTopBar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -489,18 +490,13 @@ fun HomeScreen(
     )
 
     val glassProvider = LocalGlassBottomBarProvider.current
-    val glassSource = LocalGlassBarSource.current
-    // 顶部搜索胶囊 + 通知圆钮的独立模糊源：只标记列表层，顶栏自身在层外，避免采样到自己
+    // 首页列表的独立模糊源：只标记列表层。顶栏胶囊、刷新/+ 悬浮钮都在层外采样它，避免采样到自己。
+    // （底栏玻璃由主壳统一录制整个 tab pager，不再由首页单独录制。）
     val topGlassSource = glassProvider?.rememberSource()
+    val glassSource = topGlassSource
+    CompositionLocalProvider(LocalGlassBarSource provides topGlassSource) {
     Box(modifier = Modifier.fillMaxSize()) {
-        // 模糊层只包列表；刷新/+ 在层外，与玻璃底栏共用 glassBarSource
-        Box(
-            modifier = if (glassProvider != null && glassSource != null) {
-                glassProvider.contentSource(Modifier.fillMaxSize(), glassSource)
-            } else {
-                Modifier.fillMaxSize()
-            },
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             // 整页避让状态栏
             modifier = Modifier
@@ -1015,6 +1011,7 @@ fun HomeScreen(
             }
         }
     }
+    } // LocalGlassBarSource = 首页列表源
 
     FeedAuthorBlockConfirmDialog(
         request = feedAuthorBlockRequest,

@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -164,7 +165,8 @@ private fun FollowScreenContent(
         viewModel.selectedTabIndex = pagerState.currentPage
     }
 
-    Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+    // 底部留白交给列表 contentPadding：列表要能滚到悬浮玻璃底栏下面，不能整块裁在底栏上方
+    Column {
         FollowTabRow(
             pagerState = pagerState,
             selectedTabIndex = pagerState.currentPage,
@@ -195,11 +197,13 @@ private fun FollowScreenContent(
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
+                    bottomPadding = innerPadding.calculateBottomPadding(),
                     isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 0),
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
+                    bottomPadding = innerPadding.calculateBottomPadding(),
                     isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 1),
                 )
             }
@@ -345,6 +349,7 @@ fun FollowingUsersRow() {
 fun FollowRecommendScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: Dp = 0.dp,
 ) {
     val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
@@ -395,6 +400,7 @@ fun FollowRecommendScreen(
                 modifier = Modifier
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -491,6 +497,7 @@ fun FollowRecommendScreen(
 fun FollowDynamicScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: Dp = 0.dp,
 ) {
     val viewModel: FollowViewModel = viewModel { FollowViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
@@ -541,6 +548,7 @@ fun FollowDynamicScreen(
                 modifier = Modifier
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {
                     item {

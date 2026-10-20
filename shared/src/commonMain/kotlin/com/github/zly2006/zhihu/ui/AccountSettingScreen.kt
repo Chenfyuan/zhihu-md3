@@ -173,11 +173,13 @@ fun AccountSettingScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(innerPadding)
+                // 底部留白放到滚动内容里，内容才能滚到悬浮玻璃底栏下面
+                .padding(top = innerPadding.calculateTopPadding())
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
                 .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
-                .padding(padding),
+                .padding(padding)
+                .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {

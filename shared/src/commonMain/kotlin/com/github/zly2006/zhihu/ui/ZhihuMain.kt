@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.drawWithContent
@@ -939,6 +940,25 @@ fun ZhihuMain(
     }
 }
 
+/** 测试入口：按页面 key（home/follow/hotlist/daily/online_history/my_collections/account）渲染主壳 pager。 */
+@Composable
+fun MainTabsPagerForTest(
+    pagerState: PagerState,
+    pageKeys: List<String>,
+    innerPadding: PaddingValues,
+) {
+    val all = listOf(
+        MainTabPage.HomePage,
+        MainTabPage.FollowPage,
+        MainTabPage.HotListPage,
+        MainTabPage.DailyPage,
+        MainTabPage.OnlineHistoryPage,
+        MainTabPage.MyCollectionsPage,
+        MainTabPage.AccountPage,
+    )
+    MainTabsPager(pagerState, pageKeys.mapNotNull { k -> all.firstOrNull { it.key == k } }, 0, innerPadding, true)
+}
+
 /**
  * 渲染可配置底部导航主壳内的页面。
  *
@@ -955,19 +975,25 @@ private fun MainTabsPager(
 ) {
     val glassProvider = LocalGlassBottomBarProvider.current
     val glassSource = LocalGlassBarSource.current
+    // 根因修复：以前每个非首页 tab 各自把页面录进同一个底栏 backdrop、首页又在内部单独录制；
+    // pager 会预取/保留相邻页，多个节点抢写同一个 layer，底栏常采样到屏幕外或空白页（玻璃“消失”/像不透明）。
+    // 现在由这里统一录制整个 pager：底栏看到的永远是屏幕上实际可见的内容（滑动切页时也一致），不随切页增删 modifier。
+    // pager 内部不再暴露底栏源（页面内悬浮钮若采样它会把自己录进去），首页自带列表源给自己的悬浮钮用。
+    Box(
+        if (glassProvider != null && glassSource != null) {
+            glassProvider.contentSource(Modifier.fillMaxSize(), glassSource).testTag(MAIN_TABS_GLASS_SOURCE_TAG)
+        } else {
+            Modifier.fillMaxSize()
+        },
+    ) {
+    CompositionLocalProvider(LocalGlassBarSource provides null) {
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
         pageNestedScrollConnection = NoOpPagerNestedScrollConnection,
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
-        val pageModifier =
-            if (glassProvider != null && glassSource != null && page != MainTabPage.HomePage) {
-                glassProvider.contentSource(Modifier.fillMaxSize(), glassSource)
-            } else {
-                Modifier.fillMaxSize()
-            }
-        Box(pageModifier) {
+        Box(Modifier.fillMaxSize().testTag(mainTabPageTag(pageIndex))) {
         when (page) {
             MainTabPage.HomePage -> HomeScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
@@ -988,10 +1014,12 @@ private fun MainTabsPager(
             )
             MainTabPage.DailyPage -> DailyScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
+                bottomPadding = innerPadding.calculateBottomPadding(),
                 isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
+                bottomPadding = innerPadding.calculateBottomPadding(),
                 isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage(
@@ -1004,9 +1032,17 @@ private fun MainTabsPager(
                 isActive = pagerState.currentPage == pageIndex,
             )
         }
-        } // Box contentSource / fillMaxSize
+        } // Box page
     }
+    } // LocalGlassBarSource = null
+    } // 底栏玻璃源：整个 pager
 }
+
+/** 测试用：底栏玻璃源录制容器（包住整个 tab pager）。 */
+const val MAIN_TABS_GLASS_SOURCE_TAG = "main_tabs_glass_source"
+
+/** 测试用：第 [pageIndex] 个 tab 页容器。 */
+fun mainTabPageTag(pageIndex: Int): String = "main_tab_page_$pageIndex"
 
 @Composable
 private fun MyCollectionsTopLevelPage(
