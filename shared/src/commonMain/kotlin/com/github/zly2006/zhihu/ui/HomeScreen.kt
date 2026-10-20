@@ -971,7 +971,8 @@ fun HomeScreen(
                     }
                     DraggableRefreshButton(
                         modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
-                        bottomAvoidance = readingPlayerOverlayPadding,
+                        bottomAvoidance = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
+                        stackAboveFab = true,
                         onClick = { viewModel.refresh(paginationEnvironment) },
                     ) {
                         if (viewModel.isLoading) {

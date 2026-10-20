@@ -61,6 +61,8 @@ fun DraggableRefreshButton(
     preferenceName: String = "fabRefresh",
     bottomAvoidance: Dp = 0.dp,
     initiallyOnLeft: Boolean = false,
+    /** 为 true 时默认叠在右下角创作 FAB 正上方（bottomAvoidance 需包含底栏高度） */
+    stackAboveFab: Boolean = false,
     onClick: () -> Unit,
     content: @Composable () -> Unit = {
         Icon(Icons.Default.Refresh, contentDescription = "刷新")
@@ -80,8 +82,10 @@ fun DraggableRefreshButton(
     }
     var offsetY by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
     var pressing by remember { mutableStateOf(false) }
+    // 默认位置：叠在右下角「创作」FAB 正上方，两者同列、间距 16dp，整体在底栏上方 16dp。
+    // 创作 FAB 底边 = 底栏/系统栏高度(bottomAvoidance) + 16dp，高 56dp；刷新按钮再往上 16dp + 56dp。
     val maxStoredOffsetY = with(density) {
-        (screenSize.height - 250.dp.toPx()).coerceAtLeast(0f)
+        (screenSize.height - (if (stackAboveFab) FAB_STACK_HEIGHT else 250.dp).toPx()).coerceAtLeast(0f)
     }
     val maxVisibleOffsetY = with(density) {
         (maxStoredOffsetY - bottomAvoidance.toPx()).coerceAtLeast(0f)
@@ -89,7 +93,10 @@ fun DraggableRefreshButton(
 
     fun adjustFabPosition() {
         with(density) {
-            offsetX = offsetX.coerceIn(0f, screenSize.width - 56.dp.toPx())
+            // 左右各留 16dp，与创作 FAB 的 end padding 对齐，不再贴屏幕边缘
+            val minX = FAB_EDGE_MARGIN.toPx()
+            val maxX = (screenSize.width - 56.dp.toPx() - FAB_EDGE_MARGIN.toPx()).coerceAtLeast(minX)
+            offsetX = offsetX.coerceIn(minX, maxX)
             offsetY = offsetY.coerceIn(0f, maxStoredOffsetY)
         }
     }
@@ -162,3 +169,8 @@ fun DraggableRefreshButton(
         content = content,
     )
 }
+
+
+private val FAB_EDGE_MARGIN = 16.dp
+/** 16(底边距) + 56(创作 FAB) + 16(间距) + 56(刷新 FAB) */
+private val FAB_STACK_HEIGHT = 144.dp

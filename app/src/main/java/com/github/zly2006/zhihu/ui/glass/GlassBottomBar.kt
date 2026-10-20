@@ -1,5 +1,11 @@
 package com.github.zly2006.zhihu.ui.glass
 
+import androidx.compose.ui.semantics.selected
+
+import androidx.compose.ui.semantics.semantics
+
+import androidx.compose.runtime.compositionLocalOf
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -126,9 +132,11 @@ object AndroidGlassBottomBarProvider : GlassBottomBarProvider {
                 val cs = MaterialTheme.colorScheme
                 tabs.forEachIndexed { i, tab ->
                     val sel = selectedIndex == i
+                    CompositionLocalProvider(LocalTabIndex provides i) {
                     LiquidTab(onClick = { onSelect(i) }, modifier = Modifier.testTag(tab.testTag)) {
                         Icon(if (sel) tab.selectedIcon else tab.unselectedIcon, tab.label, tint = cs.onSurface, modifier = Modifier.size(24.dp))
                         Text(tab.label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Medium, color = cs.onSurface, maxLines = 1)
+                    }
                     }
                 }
             }
@@ -141,11 +149,17 @@ val LocalLiquidGlassEnabled = staticCompositionLocalOf { true }
 
 private val LocalTabScale = staticCompositionLocalOf { { 1f } }
 
+/** 玻璃高亮（胶囊）当前停靠的 Tab 下标，用于无障碍 selected 语义和测试 */
+private val LocalIndicatorIndex = compositionLocalOf { -1 }
+private val LocalTabIndex = compositionLocalOf { -1 }
+
 @Composable
 private fun RowScope.LiquidTab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val scale = LocalTabScale.current
+    val indicatorOnMe = LocalIndicatorIndex.current == LocalTabIndex.current
     Column(
         modifier
+            .semantics { selected = indicatorOnMe }
             .clip(Capsule())
             .clickable(interactionSource = null, indication = null, role = Role.Tab, onClick = onClick)
             .fillMaxHeight()
@@ -215,13 +229,17 @@ private fun LiquidTabs(
                 },
             )
         }
+        // 修复：LaunchedEffect 只启动一次，直接用参数 lambda 会一直读首次组合时捕获的旧 selectedIndex，
+        // 导致切换 Tab 后高亮停在旧位置。用 rememberUpdatedState 始终读最新值。
+        val latestSelected by rememberUpdatedState(selectedTabIndex)
+        val latestPageOffset by rememberUpdatedState(pageOffset)
         LaunchedEffect(damped) {
-            snapshotFlow { selectedTabIndex() }.collectLatest { i ->
+            snapshotFlow { latestSelected() }.collectLatest { i ->
                 if (i != currentIndex) { currentIndex = i; if (!dragging) damped.animateToValue(i.toFloat()) }
             }
         }
         LaunchedEffect(damped) {
-            snapshotFlow { pageOffset() }.collectLatest { p ->
+            snapshotFlow { latestPageOffset() }.collectLatest { p ->
                 if (!dragging && abs(p - p.fastRoundToInt()) > 0.001f) damped.updateValue(p)
             }
         }
@@ -256,10 +274,12 @@ private fun LiquidTabs(
                 .fillMaxWidth()
                 .padding(4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            content = content,
+            content = { CompositionLocalProvider(LocalIndicatorIndex provides damped.targetValue.fastRoundToInt()) { content() } },
         )
 
-        CompositionLocalProvider(LocalTabScale provides { lerp(1f, 1.2f, damped.pressProgress) }) {
+        CompositionLocalProvider(
+            LocalTabScale provides { lerp(1f, 1.2f, damped.pressProgress) },
+        ) {
             Row(
                 Modifier
                     .clearAndSetSemantics {}
