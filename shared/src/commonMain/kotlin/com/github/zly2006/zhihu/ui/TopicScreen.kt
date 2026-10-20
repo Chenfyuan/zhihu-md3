@@ -218,6 +218,7 @@ class TopicViewModel(
     var detailErrorMessage by mutableStateOf<String?>(null)
         private set
     var loginRequired by mutableStateOf(false)
+    var rateLimited by mutableStateOf(false)
         private set
     var detailLoginRequired by mutableStateOf(false)
         private set
@@ -254,6 +255,7 @@ class TopicViewModel(
         items.clear()
         errorMessage = null
         loginRequired = false
+        rateLimited = false
         nextUrl = null
         isEnd = false
         requestGeneration++
@@ -269,6 +271,7 @@ class TopicViewModel(
         items.clear()
         errorMessage = null
         loginRequired = false
+        rateLimited = false
         nextUrl = null
         isEnd = false
         requestGeneration++
@@ -284,6 +287,7 @@ class TopicViewModel(
         items.clear()
         errorMessage = null
         loginRequired = false
+        rateLimited = false
         nextUrl = null
         isEnd = false
         requestGeneration++
@@ -296,6 +300,7 @@ class TopicViewModel(
         isLoading = true
         errorMessage = null
         loginRequired = false
+        rateLimited = false
         try {
             val url = nextUrl ?: topicFeedUrl(topicId, selectedTab, discussionSort, ideasSort)
             val json = environment.fetchJson(url, "data[*].content,excerpt,target.author.badge_v2")
@@ -330,6 +335,7 @@ class TopicViewModel(
             if (generation == requestGeneration) {
                 errorMessage = error.message ?: error::class.simpleName ?: "未知错误"
                 loginRequired = com.github.zly2006.zhihu.viewmodel.isLoginRequiredError(error)
+                rateLimited = com.github.zly2006.zhihu.viewmodel.isRateLimitedError(error)
             }
         } finally {
             if (generation == requestGeneration) isLoading = false
@@ -344,6 +350,7 @@ class TopicViewModel(
     fun retry(environment: PaginationEnvironment) {
         errorMessage = null
         loginRequired = false
+        rateLimited = false
         loadMore(environment)
     }
 
@@ -482,6 +489,7 @@ fun TopicScreen(topic: Topic) {
             onLoadMore = { viewModel.loadMore(environment) },
             isEnd = { viewModel.isEnd },
             loginRequired = { viewModel.loginRequired },
+            rateLimited = { viewModel.rateLimited },
             key = FeedDisplayItem::stableKey,
             listState = listState,
             modifier = Modifier

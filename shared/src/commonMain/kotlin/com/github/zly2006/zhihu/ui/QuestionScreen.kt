@@ -240,6 +240,8 @@ fun QuestionScreen(
         } catch (e: Exception) {
             if (com.github.zly2006.zhihu.viewmodel.isLoginRequiredError(e)) {
                 userMessages.showShortMessage("问题详情登录后可看")
+            } else if (com.github.zly2006.zhihu.viewmodel.isRateLimitedError(e)) {
+                userMessages.showShortMessage("请求被限制，稍后重试")
             } else {
                 userMessages.showShortMessage("加载失败: ${e.message}")
             }
@@ -278,6 +280,7 @@ fun QuestionScreen(
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
                 loginRequired = { viewModel.loginRequired },
+                rateLimited = { viewModel.rateLimited },
                 key = { it.stableKey },
                 listState = listState,
                 modifier = Modifier

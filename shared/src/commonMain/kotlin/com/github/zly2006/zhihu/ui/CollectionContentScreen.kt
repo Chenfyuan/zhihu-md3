@@ -214,6 +214,7 @@ internal fun CollectionContentBody(
         onLoadMore = { viewModel.loadMore(environment) },
         isEnd = { viewModel.isEnd },
         loginRequired = { viewModel.loginRequired },
+        rateLimited = { viewModel.rateLimited },
         listState = listState,
         modifier = modifier.testTag("${tagPrefix}_list"),
         footer = ProgressIndicatorFooter,

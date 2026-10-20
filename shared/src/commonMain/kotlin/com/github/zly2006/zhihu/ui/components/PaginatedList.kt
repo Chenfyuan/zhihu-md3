@@ -127,6 +127,7 @@ fun <T> PaginatedList(
     reverseLayout: Boolean = false,
     isEnd: () -> Boolean = { false },
     loginRequired: () -> Boolean = { false },
+    rateLimited: () -> Boolean = { false },
     footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
     topContent: LazyListScope.() -> Unit = {},
@@ -182,6 +183,8 @@ fun <T> PaginatedList(
         item {
             if (loginRequired()) {
                 LoginRequiredPrompt()
+            } else if (rateLimited()) {
+                RateLimitedPrompt(onRetry = onLoadMore)
             } else if (isEnd()) {
                 if (!showContentEndMarker) {
                     Box(

@@ -990,7 +990,16 @@ fun ArticleScreen(
                             }
                         }
 
-                        if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
+                        when (viewModel.accessError) {
+                            com.github.zly2006.zhihu.viewmodel.AccessErrorKind.RateLimited ->
+                                com.github.zly2006.zhihu.ui.components.RateLimitedPrompt(
+                                    onRetry = { viewModel.loadArticle(environment) },
+                                )
+                            com.github.zly2006.zhihu.viewmodel.AccessErrorKind.LoginRequired ->
+                                com.github.zly2006.zhihu.ui.components.LoginRequiredPrompt(message = "这篇内容登录后可看")
+                            null -> Unit
+                        }
+                        if (viewModel.accessError == null && (viewModel.content.isNotEmpty() || viewModel.attachment != null)) {
                             if (article.type == ArticleType.Article && viewModel.topics.isNotEmpty()) {
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),

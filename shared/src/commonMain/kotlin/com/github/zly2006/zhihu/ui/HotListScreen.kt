@@ -130,6 +130,7 @@ fun HotListScreen(
                 contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
                 isEnd = { viewModel.isEnd },
                 loginRequired = { viewModel.loginRequired },
+                rateLimited = { viewModel.rateLimited },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(

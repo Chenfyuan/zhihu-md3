@@ -88,6 +88,7 @@ abstract class PaginationViewModel<T : Any>(
         protected set
     /** 服务器以 401/403 拒绝了匿名请求：界面显示「登录后可看」，并停止自动加载，避免无限转圈。 */
     var loginRequired: Boolean by mutableStateOf(false)
+    var rateLimited: Boolean by mutableStateOf(false)
         protected set
     var allowGuestAccess = false
     protected var lastPaging: ZhihuPaging? by mutableStateOf(null)
@@ -110,6 +111,7 @@ abstract class PaginationViewModel<T : Any>(
         isLoading = false
         errorMessage = null
         loginRequired = false
+        rateLimited = false
         debugData.clear()
         allData.clear()
         lastPaging = null // 重置 lastPaging
@@ -177,6 +179,7 @@ abstract class PaginationViewModel<T : Any>(
     @OptIn(DelicateCoroutinesApi::class)
     open fun loadMore(environment: PaginationEnvironment) {
         if (isLoading || isEnd || loginRequired) return // 使用新的isEnd getter
+        rateLimited = false
         isLoading = true
         currentJob = viewModelScope.launch {
             try {
@@ -187,9 +190,19 @@ abstract class PaginationViewModel<T : Any>(
         }
     }
 
+    /** 与 loadMore() 相同的取数 + 错误处理路径，但不依赖 Main 调度器；仅供测试。 */
+    internal suspend fun fetchOnceForTest(environment: PaginationEnvironment) {
+        rateLimited = false
+        try { fetchFeeds(environment) } catch (e: Exception) { errorHandle(e) }
+    }
+
     protected fun errorHandle(e: Exception) {
         if (e !is CancellationException) {
-            if (isLoginRequiredError(e)) loginRequired = true
+            when (classifyAccessError(e)) {
+                AccessErrorKind.LoginRequired -> loginRequired = true
+                AccessErrorKind.RateLimited -> rateLimited = true
+                null -> Unit
+            }
             errorMessage = e.message
             isLoading = false
         }
@@ -578,16 +591,44 @@ data class HomeFeedFilterResult(
 @Composable
 expect fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment
 
-/** 知乎对匿名请求返回 401/403（如 need_login、40362）时视为需要登录；只做提示，不做任何绕过。 */
-fun isLoginRequiredError(e: Throwable?): Boolean {
+/** 匿名/受限访问的错误分类：只做提示，不做任何签名或反爬绕过。 */
+enum class AccessErrorKind {
+    /** 401，或 403 且 need_login=true / code 40353：显示「登录后可看」+ 登录按钮 */
+    LoginRequired,
+
+    /** code 40362 / 10003：请求被限制，显示「请求被限制，稍后重试」+ 重试，不显示登录按钮 */
+    RateLimited,
+}
+
+private val RATE_LIMITED_CODES = setOf(40362, 10003)
+private const val NEED_LOGIN_CODE = 40353
+
+fun classifyAccessError(e: Throwable?): AccessErrorKind? {
     var cur = e
     while (cur != null) {
-        if (cur is com.github.zly2006.zhihu.util.HttpStatusException &&
-            (cur.status.value == 401 || cur.status.value == 403)
-        ) {
-            return true
+        if (cur is com.github.zly2006.zhihu.util.HttpStatusException) {
+            val error = runCatching {
+                kotlinx.serialization.json.Json.parseToJsonElement(cur.bodyText)
+                    .let { it as? JsonObject }?.get("error") as? JsonObject
+            }.getOrNull()
+            val code = (error?.get("code") as? kotlinx.serialization.json.JsonPrimitive)?.content?.toIntOrNull()
+            val needLogin = (error?.get("need_login") as? kotlinx.serialization.json.JsonPrimitive)?.content == "true"
+            return when {
+                code in RATE_LIMITED_CODES -> AccessErrorKind.RateLimited
+                cur.status.value == 401 -> AccessErrorKind.LoginRequired
+                cur.status.value == 403 && (needLogin || code == NEED_LOGIN_CODE) -> AccessErrorKind.LoginRequired
+                else -> null
+            }
         }
         cur = cur.cause
     }
-    return false
+    return null
 }
+
+fun isLoginRequiredError(e: Throwable?): Boolean = classifyAccessError(e) == AccessErrorKind.LoginRequired
+
+fun isRateLimitedError(e: Throwable?): Boolean = classifyAccessError(e) == AccessErrorKind.RateLimited
+
+/** 与 [fetchContentDetail] 相同，但不吞异常，用于需要区分「登录后可看 / 请求被限制」的详情页。 */
+suspend fun ZhihuApiEnvironment.fetchContentDetailOrThrow(destination: NavDestination): DataHolder.Content? =
+    fetchZhihuContentDetail(destination) { url, include -> fetchJson(url, include) }

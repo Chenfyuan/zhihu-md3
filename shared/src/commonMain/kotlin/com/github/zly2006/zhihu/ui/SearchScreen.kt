@@ -749,6 +749,9 @@ fun SearchScreen(
                     item {
                         when {
                             viewModel.loginRequired -> LoginRequiredPrompt(message = "搜索结果登录后可看")
+                            viewModel.rateLimited -> com.github.zly2006.zhihu.ui.components.RateLimitedPrompt(
+                                onRetry = { viewModel.retry(paginationEnvironment) },
+                            )
                             viewModel.errorMessage != null -> {
                                 TextButton(
                                     modifier = Modifier.fillMaxWidth().testTag("search_retry_button"),
@@ -791,6 +794,7 @@ fun SearchScreen(
                         },
                         isEnd = { viewModel.isEnd && !viewModel.loginRequired },
                         loginRequired = { viewModel.loginRequired },
+                        rateLimited = { viewModel.rateLimited },
                         footer = { state ->
                             // 其它错误：普通错误信息 + 重试；不再无限转圈。
                             if (viewModel.errorMessage != null) {

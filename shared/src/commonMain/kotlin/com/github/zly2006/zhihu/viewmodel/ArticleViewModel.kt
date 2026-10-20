@@ -118,6 +118,9 @@ class ArticleViewModel(
     var authorAvatarSrc by mutableStateOf("")
     var authorBadge by mutableStateOf<OfficialBadge?>(null)
     var content by mutableStateOf("")
+
+    /** 详情加载被知乎拒绝的原因：登录后可看 / 请求被限制（null 表示正常或其它错误） */
+    var accessError by mutableStateOf<AccessErrorKind?>(null)
     var attachment by mutableStateOf<JsonElement?>(null)
     var voteUpCount by mutableIntStateOf(0)
     var commentCount by mutableIntStateOf(0)
@@ -256,10 +259,20 @@ class ArticleViewModel(
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
+                loadArticleContent(environment)
+            }
+        }
+    }
+
+    /** loadArticle 的实际加载逻辑（可在测试中直接调用，不依赖 Main 调度器） */
+    internal suspend fun loadArticleContent(environment: ArticleLoadEnvironment) {
+        accessError = null
+        run {
+            run {
                 try {
                     if (article.type == ArticleType.Answer) {
                         val sharedData = sharedArticleAnswerSwitchState
-                        val answer = environment.fetchContentDetail(article) as? DataHolder.Answer
+                        val answer = environment.fetchContentDetailOrThrow(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
                             title = answer.question.title
@@ -339,7 +352,7 @@ class ArticleViewModel(
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
-                        val article = environment.fetchContentDetail(article) as? DataHolder.Article
+                        val article = environment.fetchContentDetailOrThrow(article) as? DataHolder.Article
                         if (article != null) {
                             endorsements = emptyList()
                             exportSourceContent = article
@@ -387,7 +400,14 @@ class ArticleViewModel(
                     throw e
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load content", e)
-                    if (content.isBlank()) content = LOAD_FAILED_HINT_HTML
+                    accessError = classifyAccessError(e)
+                    if (content.isBlank() || accessError != null) {
+                        content = when (accessError) {
+                            AccessErrorKind.LoginRequired -> LOGIN_REQUIRED_HINT_HTML
+                            AccessErrorKind.RateLimited -> RATE_LIMITED_HINT_HTML
+                            null -> LOAD_FAILED_HINT_HTML
+                        }
+                    }
                 }
             }
         }
@@ -1148,6 +1168,12 @@ private data class AnswerRelationshipEndorsement(
 )
 
 /** 匿名访问时知乎常以 403 拒绝回答/文章详情：给出明确提示而不是空白页。 */
+internal const val LOGIN_REQUIRED_HINT_HTML =
+    "<h1>登录后可看</h1><p>知乎不向未登录用户提供这篇内容，可前往「账号」页登录后再试。</p>"
+
+internal const val RATE_LIMITED_HINT_HTML =
+    "<h1>请求被限制，稍后重试</h1><p>知乎暂时限制了这类请求，等一会儿点「重试」通常就能恢复。</p>"
+
 internal const val LOAD_FAILED_HINT_HTML =
     "<h1>你似乎来到了没有知识存在的荒原</h1><p>内容可能已被删除，或者知乎要求登录后才能查看。" +
         "未登录时可前往「账号」页登录后再试。</p>"

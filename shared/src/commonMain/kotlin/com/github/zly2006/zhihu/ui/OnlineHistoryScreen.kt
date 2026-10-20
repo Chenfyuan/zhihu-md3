@@ -198,6 +198,7 @@ fun OnlineHistoryScreen(
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
                 loginRequired = { viewModel.loginRequired },
+                rateLimited = { viewModel.rateLimited },
                 key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(

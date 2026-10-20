@@ -170,6 +170,7 @@ fun NotificationScreen() {
                 onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
                 loginRequired = { viewModel.loginRequired },
+                rateLimited = { viewModel.rateLimited },
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
                 key = { it.stableId },
