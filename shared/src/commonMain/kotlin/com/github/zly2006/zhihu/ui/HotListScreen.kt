@@ -17,6 +17,10 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -110,15 +114,20 @@ fun HotListScreen(
     }
 
     Column {
+        // 与首页/搜索统一：顶部使用 Material 3 TopAppBar，状态栏留白由 TopAppBar 自己处理。
+        TopAppBar(
+            title = { Text("热榜", style = MaterialTheme.typography.titleLarge) },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+        )
         FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(environment) },
                 modifier = Modifier
-                    .padding(innerPadding)
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(HOT_LIST_LIST_TAG),
+                contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
                 isEnd = { viewModel.isEnd },
                 loginRequired = { viewModel.loginRequired },
                 footer = ProgressIndicatorFooter,

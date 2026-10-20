@@ -459,7 +459,7 @@ private fun FeedCardContent(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = authorName,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -476,8 +476,10 @@ private fun FeedCardContent(
             Column(modifier = Modifier.weight(2f)) {
                 Text(
                     text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
+                    style = MaterialTheme.typography.bodyMedium,
                     fontSize = 14.sp * fontSizePercent / 100,
                     lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
@@ -493,8 +495,7 @@ private fun FeedCardContent(
                     ) {
                         Text(
                             text = item.details,
-                            fontSize = 12.sp,
-                            lineHeight = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
@@ -625,7 +626,7 @@ private fun PinFeedImage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f)),
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

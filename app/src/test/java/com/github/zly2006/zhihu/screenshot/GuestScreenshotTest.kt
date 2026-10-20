@@ -75,11 +75,6 @@ abstract class GuestScreenshotBase(private val suffix: String) {
 
     @Before
     fun offline() {
-        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
-        com.github.zly2006.zhihu.data.AccountData.loadData(ctx)
-        com.github.zly2006.zhihu.theme.AndroidThemeSettings.initialize(ctx)
-        com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase(ctx)
-        com.github.zly2006.zhihu.account.androidZhihuAccountStore(ctx)
         accountHttpClientEngineForTesting = MockEngine { request ->
             // 模拟知乎对匿名搜索的真实响应（403 need_login），验证游客降级提示。
             if ("/search" in request.url.encodedPath) {
@@ -91,6 +86,13 @@ abstract class GuestScreenshotBase(private val suffix: String) {
             }
             respond("""{"error":"offline screenshot"}""", HttpStatusCode.NotFound, headersOf("Content-Type", "application/json"))
         }
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        com.github.zly2006.zhihu.data.AccountData.loadData(ctx)
+        com.github.zly2006.zhihu.theme.AndroidThemeSettings.initialize(ctx)
+        com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase(ctx)
+        com.github.zly2006.zhihu.account.androidZhihuAccountStore(ctx)
+        com.github.zly2006.zhihu.updater.UpdateManager.updateState.value =
+            com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.NoUpdate
     }
 
     @After

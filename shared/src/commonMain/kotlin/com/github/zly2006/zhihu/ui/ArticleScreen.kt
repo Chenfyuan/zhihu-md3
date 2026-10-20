@@ -159,7 +159,6 @@ import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
-import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.painterResource
@@ -665,8 +664,8 @@ fun ArticleScreen(
                                     IconButton(
                                         onClick = { showCollectionDialog = true },
                                         colors = IconButtonDefaults.iconButtonColors(
-                                            containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
-                                            contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                                            containerColor = if (viewModel.isFavorited) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = if (viewModel.isFavorited) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
                                         ),
                                     ) {
                                         Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
@@ -806,12 +805,12 @@ fun ArticleScreen(
                                         onClick = { showCollectionDialog = true },
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = if (viewModel.isFavorited) {
-                                                Color(0xFFF57C00).harmonize(MaterialTheme.colorScheme.primary)
+                                                MaterialTheme.colorScheme.tertiaryContainer
                                             } else {
                                                 MaterialTheme.colorScheme.surfaceContainer
                                             },
                                             contentColor = if (viewModel.isFavorited) {
-                                                Color.White.copy(alpha = 0.87f)
+                                                MaterialTheme.colorScheme.onTertiaryContainer
                                             } else {
                                                 MaterialTheme.colorScheme.onSurface
                                             },
@@ -833,8 +832,8 @@ fun ArticleScreen(
                                             },
                                             enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
                                             colors = IconButtonDefaults.iconButtonColors(
-                                                containerColor = Color(0xFF4CAF50).harmonize(MaterialTheme.colorScheme.primary),
-                                                contentColor = Color.White,
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                             ),
                                         ) {
                                             Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
@@ -937,14 +936,14 @@ fun ArticleScreen(
                         fun ColumnScope.DateTexts() {
                             Text(
                                 "发布于 " + formatArticleDateTime(viewModel.createdAt),
-                                color = Color.Gray,
-                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall,
                             )
                             if (viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
                                     "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
-                                    color = Color.Gray,
-                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall,
                                 )
                             }
                         }
@@ -1059,8 +1058,8 @@ fun ArticleScreen(
                                     if (viewModel.ipInfo != null) {
                                         Text(
                                             "IP属地：${viewModel.ipInfo}",
-                                            color = Color.Gray,
-                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.labelSmall,
                                         )
                                     }
                                 }
@@ -1088,8 +1087,8 @@ fun ArticleScreen(
                                             if (viewModel.ipInfo != null) {
                                                 Text(
                                                     "IP属地：${viewModel.ipInfo}",
-                                                    color = Color.Gray,
-                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    style = MaterialTheme.typography.labelSmall,
                                                 )
                                             }
                                         }
