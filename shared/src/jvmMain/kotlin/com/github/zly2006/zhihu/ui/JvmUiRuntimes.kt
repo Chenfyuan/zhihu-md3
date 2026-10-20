@@ -55,22 +55,6 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 @Composable
-actual fun rememberArticleTtsState(): TtsState = DesktopArticleSpeechController.currentTtsState
-
-@Composable
-actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
-    val userMessages = rememberUserMessageSink()
-    val coroutineScope = rememberCoroutineScope()
-    return remember(userMessages, coroutineScope) {
-        object : ArticleSpeechToggler {
-            override fun invoke(title: String, content: String) {
-                DesktopArticleSpeechController.toggleSpeech(title, content, coroutineScope, userMessages)
-            }
-        }
-    }
-}
-
-@Composable
 actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
@@ -83,78 +67,6 @@ actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
         }
     }
 }
-
-private object DesktopArticleSpeechController {
-    private var speechProcess: Process? = null
-    var currentTtsState by mutableStateOf(
-        if (isDesktopSpeechCommandAvailable()) TtsState.Ready else TtsState.Error,
-    )
-        private set
-
-    fun toggleSpeech(
-        title: String,
-        content: String,
-        coroutineScope: kotlinx.coroutines.CoroutineScope,
-        userMessages: UserMessageSink,
-    ) {
-        if (currentTtsState.isSpeaking) {
-            stopSpeaking()
-        } else if (currentTtsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-            coroutineScope.launch {
-                try {
-                    val textToRead = withContext(Dispatchers.IO) {
-                        articleSpeechText(title, content)
-                    }
-                    if (textToRead.isNotBlank()) {
-                        speakText(textToRead, title, userMessages)
-                    }
-                } catch (e: Exception) {
-                    currentTtsState = TtsState.Error
-                    userMessages.showMessage("朗读失败：${e.message}")
-                }
-            }
-        }
-    }
-
-    private suspend fun speakText(
-        text: String,
-        title: String,
-        userMessages: UserMessageSink,
-    ) {
-        currentTtsState = TtsState.LoadingText
-        val process = withContext(Dispatchers.IO) {
-            ProcessBuilder("say")
-                .redirectErrorStream(true)
-                .start()
-        }
-        speechProcess = process
-        currentTtsState = TtsState.Speaking
-        userMessages.showMessage("开始朗读：$title")
-        val exitCode = withContext(Dispatchers.IO) {
-            process.outputStream.bufferedWriter().use { writer ->
-                writer.write(text)
-            }
-            process.waitFor()
-        }
-        if (speechProcess == process) {
-            speechProcess = null
-            currentTtsState = if (exitCode == 0) TtsState.Ready else TtsState.Error
-        }
-    }
-
-    private fun stopSpeaking() {
-        speechProcess?.destroy()
-        speechProcess = null
-        currentTtsState = TtsState.Ready
-    }
-}
-
-private fun isDesktopSpeechCommandAvailable(): Boolean =
-    runCatching {
-        ProcessBuilder("sh", "-c", "command -v say >/dev/null 2>&1")
-            .start()
-            .waitFor() == 0
-    }.getOrDefault(false)
 
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =

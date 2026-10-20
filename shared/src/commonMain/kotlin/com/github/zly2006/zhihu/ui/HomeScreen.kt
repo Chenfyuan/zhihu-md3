@@ -135,7 +135,6 @@ import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberWebViewUrlOpener
-import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -242,7 +241,6 @@ fun HomeScreen(
     showTopActions: Boolean = true,
     isActive: Boolean = true,
 ) {
-    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val navigator = LocalNavigator.current
     val baseEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
@@ -306,11 +304,6 @@ fun HomeScreen(
         RecommendationMode.MIXED -> viewModel { MixedHomeFeedViewModel() }
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
-    val readingQueueSourceId = "home:${currentRecommendationMode.name}"
-    RegisterReadingQueueSource(
-        sourceId = readingQueueSourceId,
-        items = viewModel.displayItems,
-    )
 
     var dismissedUpdateVersion by homeState.dismissedUpdateVersion
     var authorPinAnnouncements by homeState.authorPinAnnouncements
@@ -723,7 +716,7 @@ fun HomeScreen(
                     contentPadding = PaddingValues(
                         top = scaffoldPadding.calculateTopPadding() + 8.dp,
                         // 底栏 + 播放条 + 右下角 FAB 叠放高度，列表最后几条不被挡住、点击不会落到 FAB 上
-                        bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding +
+                        bottom = innerPadding.calculateBottomPadding() +
                             if (showRefreshFab) 144.dp else 72.dp,
                     ),
                     onLoadMore = { viewModel.loadMore(paginationEnvironment) },
@@ -887,7 +880,6 @@ fun HomeScreen(
                 ) { item ->
                     FeedCard(
                         item,
-                        readingQueueSourceId = readingQueueSourceId,
                         thumbnailUrl = when (val target = item.feed?.target) {
                             is Feed.AnswerTarget -> target.thumbnail
                             else -> null
@@ -983,14 +975,14 @@ fun HomeScreen(
                         userMessages.showShortMessage("已复制调试数据")
                     },
                     preferenceName = "copyAll",
-                    bottomAvoidance = readingPlayerOverlayPadding,
+                    bottomAvoidance = 0.dp,
                 ) {
                     Icon(Icons.Default.CopyAll, contentDescription = "复制")
                 }
             }
             DraggableRefreshButton(
                 modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
-                bottomAvoidance = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
+                bottomAvoidance = innerPadding.calculateBottomPadding(),
                 stackAboveFab = true,
                 onClick = { viewModel.refresh(paginationEnvironment) },
             ) {
@@ -1025,7 +1017,7 @@ fun HomeScreen(
                 .align(Alignment.BottomEnd)
                 .padding(
                     end = 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding + 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 16.dp,
                 ),
             horizontalAlignment = Alignment.End,
         ) {

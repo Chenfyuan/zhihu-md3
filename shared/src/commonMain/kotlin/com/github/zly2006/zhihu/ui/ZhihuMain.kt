@@ -30,6 +30,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -156,12 +157,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.Animatable
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
-import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
-import com.github.zly2006.zhihu.ui.components.CompactReadingPlayerButton
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
-import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
-import com.github.zly2006.zhihu.ui.components.ReadingQueueSheet
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.ThemePreviewScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -170,7 +166,6 @@ import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
-import com.github.zly2006.zhihu.ui.subscreens.ReadingSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.delay
@@ -197,7 +192,6 @@ private sealed class MainTabPage(
     data object AccountPage : MainTabPage(Account, "account")
 }
 
-internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
 internal val LocalArticleNavController = staticCompositionLocalOf<NavHostController?> { null }
 
 /**
@@ -261,8 +255,6 @@ fun ZhihuMain(
     val selectedBottomBarItemKeys = preferenceState.selectedBottomBarItemKeys
     val startDestination = preferenceState.startDestination
     val reloadBottomBarPreferences = preferenceState::reload
-    val readingPlayer = rememberReadingPlayerController()
-    val readingPlayerState by readingPlayer.state
     val settings = rememberSettingsStore()
 
     /** 右侧详情独立持有返回栈；栏内导航保留上级，从左侧重新选项时清空。 */
@@ -271,10 +263,6 @@ fun ZhihuMain(
     val detailEntry by detailNavController.currentBackStackEntryAsState()
     val selectedContentDestination = detailEntry.readingDestinationOrNull()
     val hasOpenSecondaryDetail = detailEntry?.destination?.hasRoute<EmptyDetail>() == false
-    var showReadingQueue by remember { mutableStateOf(false) }
-    var isReadingPlayerExpandedByUser by remember { mutableStateOf(false) }
-    var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
-    val readingPlayerOverlayOffsetState = remember { ReadingPlayerOverlayOffsetState() }
     val density = LocalDensity.current
     val currentOnMainTabDestinationChange by rememberUpdatedState(onCurrentMainTabDestinationChange)
 
@@ -305,67 +293,9 @@ fun ZhihuMain(
         navigateContent(destination, detailNavController)
     }
 
-    fun openReadingDestination(destination: NavDestination, onlyIfReading: Boolean = false) {
-        val current = if (hasOpenDetail) selectedContentDestination else navEntry.readingDestinationOrNull()
-        if (current == destination || (onlyIfReading && current == null)) return
-        val opensInDetail = useSecondaryContentNavigation && destination.isDetailPaneDestination()
-        if (hasOpenDetail) {
-            if (opensInDetail) {
-                detailNavController.popBackStack()
-            } else {
-                detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
-            }
-        } else if (current != null && !opensInDetail) {
-            navController.popBackStack()
-        }
-        if (opensInDetail) {
-            detailOwnerEntryId = navController.currentBackStackEntry?.id
-            navigateContent(destination, detailNavController)
-        } else {
-            navigate(destination)
-        }
-    }
-    val isOnReadingDetail = hasOpenDetail ||
-        navEntry?.destination?.hasRoute<Article>() == true ||
-        navEntry?.destination?.hasRoute<Question>() == true ||
-        navEntry?.destination?.hasRoute<Pin>() == true
-    val isReadingPlayerExpanded = readingPlayerState.hasSession &&
-        (isOnReadingDetail || isReadingPlayerExpandedByUser)
-    val shouldCompactPlayerOnBackgroundInteraction by rememberUpdatedState(
-        isReadingPlayerExpandedByUser && !isOnReadingDetail,
-    )
-    val readingPlayerOverlayPadding = when {
-        !readingPlayerState.hasSession -> 0.dp
-        !isReadingPlayerExpanded -> 0.dp
-        readingPlayerHeightPx > 0 -> with(density) { readingPlayerHeightPx.toDp() } + 16.dp
-        else -> 16.dp
-    }
-
-    LaunchedEffect(readingPlayerState.hasSession) {
-        if (!readingPlayerState.hasSession) {
-            showReadingQueue = false
-            isReadingPlayerExpandedByUser = false
-            readingPlayerOverlayOffsetState.resetOffset()
-        }
-    }
-    var previousReadingItemKey by remember { mutableStateOf(readingPlayerState.currentItem?.key) }
-    LaunchedEffect(readingPlayerState.currentItem?.key) {
-        val currentItem = readingPlayerState.currentItem
-        val currentItemKey = currentItem?.key
-        val itemChanged = previousReadingItemKey != null && previousReadingItemKey != currentItemKey
-        previousReadingItemKey = currentItemKey
-        if (itemChanged && currentItem != null) {
-            openReadingDestination(currentItem.toDestination(readingPlayerState.sourceId), onlyIfReading = true)
-        }
-    }
-
     // 离开文章页时恢复系统状态栏（只在实际切换时触发）
     val isOnArticle = (hasOpenDetail && detailEntry?.destination?.hasRoute<Article>() == true) ||
         navEntry?.destination?.hasRoute<Article>() == true
-    LaunchedEffect(navEntry) {
-        isReadingPlayerExpandedByUser = false
-        if (!isOnArticle) readingPlayerOverlayOffsetState.clearRoute()
-    }
     var wasOnArticle by remember { mutableStateOf(false) }
     if (!isOnArticle && wasOnArticle) {
         LeaveImmersiveModeCleanup()
@@ -440,22 +370,73 @@ fun ZhihuMain(
     val detailBackProgress = remember { Animatable(0f) }
     val detailBackScope = rememberCoroutineScope()
     val mainDetailBackEnabled = navEntry != null && !showMainNavigation && !showDetailPane
-    if (predictiveBackEnabled) {
-        PlatformPredictiveBackHandler(
-            enabled = mainDetailBackEnabled || showDetailPane,
+
+    // 窄屏时阅读页（回答/文章/想法）由详情栈承载并覆盖在列表之上。详情栈只剩这一页时，
+    // 出栈会让整个详情层消失，NavHost 自己的出场动画来不及播放，所以这里先把详情层滑出再出栈。
+    val detailOverlaySlide = remember { Animatable(1f) }
+    var detailOverlayExiting by remember { mutableStateOf(false) }
+    val isNarrowDetailOverlay = showDetailPane && !showListDetail
+    LaunchedEffect(isNarrowDetailOverlay) {
+        if (isNarrowDetailOverlay) {
+            detailOverlaySlide.animateTo(0f, tween(300))
+        } else {
+            detailOverlaySlide.snapTo(1f)
+            detailOverlayExiting = false
+        }
+    }
+
+    fun popDetail() {
+        val leavesOverlay = isNarrowDetailOverlay &&
+            detailNavController.previousBackStackEntry?.destination?.hasRoute<EmptyDetail>() == true
+        if (!leavesOverlay) {
+            detailNavController.popBackStack()
+            detailBackScope.launch { detailBackProgress.snapTo(0f) }
+            return
+        }
+        if (detailOverlayExiting) return
+        detailOverlayExiting = true
+        detailBackScope.launch {
+            detailOverlaySlide.animateTo(1f, tween(250))
+            detailNavController.popBackStack()
+            detailBackProgress.snapTo(0f)
+        }
+    }
+
+    val detailBackGesture = if (predictiveBackEnabled) {
+        DetailBackGesture(
             onProgress = { p -> detailBackScope.launch { detailBackProgress.snapTo(p) } },
             onCancel = { detailBackScope.launch { detailBackProgress.animateTo(0f, tween(180)) } },
             onBack = {
-                if (showDetailPane) detailNavController.popBackStack() else navController.popBackStack()
-                detailBackScope.launch { detailBackProgress.snapTo(0f) }
+                if (showDetailPane) {
+                    popDetail()
+                } else {
+                    navController.popBackStack()
+                    detailBackScope.launch { detailBackProgress.snapTo(0f) }
+                }
             },
         )
     } else {
-        PlatformBackHandler(enabled = mainDetailBackEnabled) {
-            navController.popBackStack()
-        }
-        PlatformBackHandler(enabled = showDetailPane) {
-            detailNavController.popBackStack()
+        null
+    }
+
+    /**
+     * 必须放在对应 NavHost 之后组合：NavHost 自己也注册了返回回调（返回栈多于一页时启用），
+     * 后注册的回调优先。以前这里写在 NavHost 之前，手势被 NavHost 抢走，页面缩小从未生效；
+     * 阅读页又在详情栈里，NavHost 出栈后整层直接消失，看起来就是没有返回动画。
+     */
+    @Composable
+    fun DetailBackHandler(enabled: Boolean) {
+        if (detailBackGesture != null) {
+            PlatformPredictiveBackHandler(
+                enabled = enabled,
+                onProgress = detailBackGesture.onProgress,
+                onCancel = detailBackGesture.onCancel,
+                onBack = detailBackGesture.onBack,
+            )
+        } else {
+            PlatformBackHandler(enabled = enabled) {
+                if (showDetailPane) popDetail() else navController.popBackStack()
+            }
         }
     }
 
@@ -556,17 +537,19 @@ fun ZhihuMain(
                         navigate(destination)
                     }
                 },
-                onNavigateBack = detailNavController::popBackStack,
+                onNavigateBack = ::popDetail,
                 onNavigateTopLevel = ::navigateTopLevel,
             ),
             LocalSelectedContentDestination provides selectedContentDestination,
-            LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
-            LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
+            LocalDetailBackGesture provides detailBackGesture,
         ) {
             NavHost(
                 navController = detailNavController,
                 startDestination = EmptyDetail,
-                modifier = modifier.testTag("detail_pane").predictiveBackLayer { detailBackProgress.value },
+                modifier = modifier
+                    .predictiveBackLayer { detailBackProgress.value }
+                    .testTag("detail_pane")
+                    .background(MaterialTheme.colorScheme.background),
                 enterTransition = { slideInHorizontally(tween(300)) { it } },
                 exitTransition = { listExitTransition() },
                 popEnterTransition = { EnterTransition.None },
@@ -587,6 +570,7 @@ fun ZhihuMain(
                 }
                 accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
             }
+            DetailBackHandler(enabled = showDetailPane)
         }
     }
 
@@ -614,7 +598,9 @@ fun ZhihuMain(
         }
         val glassBarProvider = LocalGlassBottomBarProvider.current
         val glassBarSource = glassBarProvider?.rememberSource()
-        if (showListDetail || !showDetailPane) {
+        // 窄屏打开阅读页时列表继续留在下层（生命周期降为 CREATED），返回手势缩小详情时能看到列表，
+        // 详情层也能做滑入/滑出动画；以前列表和详情互斥组合，切换时没有任何过渡。
+        run {
             paneStateHolder.SaveableStateProvider("list") {
                 Scaffold(
                     modifier = listPaneModifier
@@ -633,7 +619,6 @@ fun ZhihuMain(
                                 exit = slideOutVertically(tween(200)) { it },
                             ) {
                                 fun onBottomItemClick(destination: TopLevelDestination, selected: Boolean) {
-                                    isReadingPlayerExpandedByUser = false
                                     if (!selected) {
                                         navigateTopLevel(destination)
                                     } else if (tapToScrollToTopEnabled) {
@@ -677,7 +662,6 @@ fun ZhihuMain(
                                         NavigationBarItem(
                                             selected = selected,
                                             onClick = {
-                                                isReadingPlayerExpandedByUser = false
                                                 if (!selected) {
                                                     navigateTopLevel(destination)
                                                 } else if (tapToScrollToTopEnabled) {
@@ -739,34 +723,12 @@ fun ZhihuMain(
                             onNavigateBack = navController::popBackStack,
                             onNavigateTopLevel = ::navigateTopLevel,
                         ),
-                        LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
-                        LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
                         LocalSelectedContentDestination provides selectedContentDestination,
+                        LocalDetailBackGesture provides detailBackGesture,
                     ) {
                         NavHost(
                             navController,
-                            modifier = Modifier.predictiveBackLayer { if (mainDetailBackEnabled) detailBackProgress.value else 0f }
-                                .pointerInput(Unit) {
-                                while (true) {
-                                    awaitPointerEventScope {
-                                        awaitFirstDown(
-                                            requireUnconsumed = false,
-                                            pass = PointerEventPass.Initial,
-                                        )
-                                        while (
-                                            awaitPointerEvent(PointerEventPass.Final)
-                                                .changes
-                                                .any { it.pressed }
-                                        ) {
-                                            // 等手势完成后再重组，避免取消同一次背景点击或滚动。
-                                        }
-                                    }
-                                    if (shouldCompactPlayerOnBackgroundInteraction) {
-                                        delay(100)
-                                        isReadingPlayerExpandedByUser = false
-                                    }
-                                }
-                            },
+                            modifier = Modifier.predictiveBackLayer { if (mainDetailBackEnabled) detailBackProgress.value else 0f },
                             startDestination = MainTabs,
                             enterTransition = {
                                 slideInHorizontally(tween(300)) { it }
@@ -915,6 +877,7 @@ fun ZhihuMain(
                                 sentenceSimilarityContent()
                             }
                         }
+                        DetailBackHandler(enabled = mainDetailBackEnabled)
                     }
                 }
             }
@@ -923,7 +886,29 @@ fun ZhihuMain(
         if (showListDetail || showDetailPane || detailEntry == null) {
             paneStateHolder.SaveableStateProvider("detail") {
                 // 尺寸变化只调整同一宿主的布局；隐藏时保存整个导航子树，独立弹窗也随页面离开组合。
-                Row(if (showListDetail || showDetailPane) Modifier.fillMaxSize() else Modifier.size(0.dp)) {
+                Row(
+                    if (showListDetail || showDetailPane) {
+                        Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (isNarrowDetailOverlay) {
+                                    Modifier
+                                        .testTag(DETAIL_OVERLAY_TAG)
+                                        .graphicsLayer { translationX = size.width * detailOverlaySlide.value }
+                                        // 详情覆盖在列表上，空白处也不能把点击漏给下层列表。
+                                        .pointerInput(Unit) {
+                                            awaitPointerEventScope {
+                                                while (true) awaitPointerEvent(PointerEventPass.Initial)
+                                            }
+                                        }
+                                } else {
+                                    Modifier
+                                },
+                            )
+                    } else {
+                        Modifier.size(0.dp)
+                    },
+                ) {
                     if (showListDetail) {
                         Spacer(Modifier.width(listPaneWidth))
                         ListDetailDivider(
@@ -950,84 +935,6 @@ fun ZhihuMain(
                 }
             }
         }
-
-        AnimatedVisibility(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    start = if (showListDetail && showDetailPane) listPaneWidth + LIST_DETAIL_DIVIDER_WIDTH else 0.dp,
-                    bottom = bottomPadding + 16.dp + if (
-                        !showDetailPane && showMainNavigation && showMainNavigationBar && (!autoHideBottomBar || isBottomBarVisible)
-                    ) {
-                        // 玻璃底栏多出上下外边距（8dp + 14dp）
-                        if (glassBarProvider != null) 86.dp else 64.dp
-                    } else {
-                        0.dp
-                    },
-                ).fillMaxWidth(),
-            visible = isReadingPlayerExpanded,
-            enter = fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.92f),
-            exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.92f),
-        ) {
-            ReadingPlayerBar(
-                state = readingPlayerState,
-                onPrevious = readingPlayer::playPrevious,
-                onTogglePlayPause = readingPlayer::togglePlayPause,
-                onNext = readingPlayer::playNext,
-                onStop = readingPlayer::stop,
-                onOpenQueue = { showReadingQueue = true },
-                onPlaybackSpeedChange = { speed ->
-                    saveReadingPlaybackSpeed(settings, speed)
-                    readingPlayer.setPlaybackSpeed(speed)
-                },
-                onBackgroundInteraction = {
-                    if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
-                },
-                modifier = Modifier
-                    .onSizeChanged { readingPlayerHeightPx = it.height }
-                    .graphicsLayer {
-                        translationY = readingPlayerOverlayOffsetState.verticalOffsetPx
-                    },
-            )
-        }
-
-        AnimatedVisibility(
-            visible = readingPlayerState.hasSession && !isReadingPlayerExpanded,
-            enter = fadeIn(tween(220)),
-            exit = fadeOut(tween(160)),
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                CompactReadingPlayerButton(
-                    state = readingPlayerState,
-                    onExpand = { isReadingPlayerExpandedByUser = true },
-                )
-            }
-        }
-    }
-
-    if (showReadingQueue && readingPlayerState.hasSession) {
-        ReadingQueueSheet(
-            state = readingPlayerState,
-            onDismissRequest = {
-                showReadingQueue = false
-                if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
-            },
-            onItemClick = { index, item ->
-                previousReadingItemKey = item.key
-                if (index != readingPlayerState.currentIndex) {
-                    readingPlayer.playAt(index)
-                }
-                showReadingQueue = false
-                openReadingDestination(item.toDestination(readingPlayerState.sourceId))
-            },
-            onOpenSettings = {
-                showReadingQueue = false
-                isReadingPlayerExpandedByUser = false
-                if (navEntry?.destination?.hasRoute<Account.ReadingSettings>() != true) {
-                    navigate(Account.ReadingSettings)
-                }
-            },
-        )
     }
 }
 
@@ -1157,7 +1064,6 @@ private data class BottomBarItem(
 private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
     is Account.AppearanceSettings,
     Account.ThemePreview,
-    Account.ReadingSettings,
     is Account.RecommendSettings,
     Account.RecommendSettings.Blocklist,
     Account.RecommendSettings.BlockedFeedHistory,
@@ -1220,9 +1126,6 @@ private fun NavGraphBuilder.accountSettings(
             setting = entry.toRoute<Account.SystemAndUpdateSettings>().setting,
         )
     }
-    composable<Account.ReadingSettings> {
-        ReadingSettingsScreen()
-    }
     composable<Account.SettingsSearch> {
         SettingsSearchScreen()
     }
@@ -1242,6 +1145,18 @@ private fun NavGraphBuilder.accountSettings(
 fun listExitTransition(): ExitTransition =
     fadeOut(tween(durationMillis = 220), targetAlpha = 0.6f) +
         scaleOut(tween(durationMillis = 300), targetScale = 0.94f)
+
+/** 详情页返回手势的回调，阅读页内部的返回拦截（如沉浸式）可以借此让手势继续驱动页面缩小。 */
+class DetailBackGesture(
+    val onProgress: (Float) -> Unit,
+    val onCancel: () -> Unit,
+    val onBack: () -> Unit,
+)
+
+/** 只有开启「预测性返回」时才有值。 */
+val LocalDetailBackGesture = staticCompositionLocalOf<DetailBackGesture?> { null }
+
+const val DETAIL_OVERLAY_TAG = "detail_overlay"
 
 /** 预测性返回：进度 0→1 时缩放到 1→0.9 */
 fun predictiveBackScale(progress: Float): Float = 1f - 0.1f * progress.coerceIn(0f, 1f)

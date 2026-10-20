@@ -74,11 +74,6 @@ import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Video
-import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
-import com.github.zly2006.zhihu.reading.ReadingContentType
-import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
-import com.github.zly2006.zhihu.reading.ReadingPlayerState
-import com.github.zly2006.zhihu.reading.ReadingQueueItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
@@ -93,7 +88,6 @@ import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
 import com.github.zly2006.zhihu.ui.components.PageTurnCommand
 import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
-import com.github.zly2006.zhihu.ui.components.READING_QUEUE_SHEET_TAG
 import com.github.zly2006.zhihu.ui.rememberAndroidZhihuMainPreferenceState
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
@@ -382,57 +376,6 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.runOnIdle { composeRule.activity.navigate(article) }
         composeRule.onNodeWithTag("article_video_link").performClick()
         composeRule.runOnIdle { assertEquals(article, videoSource) }
-    }
-
-    /**
-     * Related tablet request: https://github.com/zly2006/zhihu-plus-plus/issues/680
-     * Regression found reviewing: https://github.com/zly2006/zhihu-plus-plus/pull/754
-     * 混合听读队列从回答切换到问题时，必须打开问题而不是跳入未注册该路由的详情图。
-     * 关闭队列弹层使用其语义动作，不依赖系统返回键的窗口分发时序。
-     */
-    @Test
-    fun readingQueueCanSwitchFromDetailToQuestion() {
-        val width = mutableStateOf(1000.dp)
-        val player = ReadingPlayerState(
-            status = ReadingPlaybackStatus.Playing,
-            queue = listOf(
-                ReadingQueueItem(ReadingContentType.Answer, 318L),
-                ReadingQueueItem(ReadingContentType.Question, 318L, title = "测试问题"),
-            ),
-            currentIndex = 0,
-        )
-        try {
-            AndroidReadingPlayerBridge.publish(player)
-            composeRule.launchZhihuMainWithFakeArticle(width = { width.value })
-            composeRule.runOnIdle { composeRule.activity.navigate(Article(type = ArticleType.Answer, id = 318L)) }
-            composeRule.onNodeWithTag("article_content").assertIsDisplayed()
-            composeRule.runOnIdle { width.value = 400.dp }
-            composeRule.onNodeWithTag("reading_player_queue").performTouchInput { click() }
-            composeRule.onNodeWithTag("reading_queue_sheet").assertIsDisplayed()
-            composeRule
-                .onNode(
-                    SemanticsMatcher
-                        .keyIsDefined(SemanticsActions.Dismiss)
-                        .and(hasAnyAncestor(hasTestTag(READING_QUEUE_SHEET_TAG))),
-                    useUnmergedTree = true,
-                ).performSemanticsAction(SemanticsActions.Dismiss)
-            composeRule.waitUntil(timeoutMillis = 5_000) {
-                composeRule
-                    .onAllNodesWithTag("reading_queue_sheet")
-                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
-                    .isEmpty()
-            }
-            composeRule.runOnIdle { AndroidReadingPlayerBridge.publish(player.copy(currentIndex = 1)) }
-            composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).assertIsDisplayed()
-            composeRule.runOnIdle {
-                width.value = 1000.dp
-                AndroidReadingPlayerBridge.publish(player)
-            }
-            composeRule.onNodeWithTag("article_content").assertIsDisplayed()
-            composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).assertIsDisplayed()
-        } finally {
-            AndroidReadingPlayerBridge.publish(ReadingPlayerState())
-        }
     }
 
     /**

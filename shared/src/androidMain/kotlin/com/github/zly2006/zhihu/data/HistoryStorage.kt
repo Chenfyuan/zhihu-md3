@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.data
 import android.content.Context
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -35,7 +34,7 @@ class HistoryStorage(
     }
 
     fun add(data: NavDestination) {
-        val historyDestination = data.withReadingQueueSource(null)
+        val historyDestination = data
         ContextCompat.getMainExecutor(activity).execute {
             this._history.remove(historyDestination)
             this._history[historyDestination] = historyDestination
@@ -59,14 +58,13 @@ class HistoryStorage(
                 val json = file.readText()
                 val data = Json.decodeFromString<List<NavDestination>>(json)
                 data
-                    .map { it.withReadingQueueSource(null) }
                     .forEach { _history[it] = it }
             }
         }
     }
 
     fun post(data: NavDestination) {
-        val historyDestination = data.withReadingQueueSource(null)
+        val historyDestination = data
         if (historyDestination in _history) {
             _history[historyDestination] = historyDestination
         }

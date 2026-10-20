@@ -53,7 +53,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreVert
@@ -112,6 +111,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
 import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
 import com.github.zly2006.zhihu.platform.isArticleHtmlExportSupported
 import com.github.zly2006.zhihu.platform.isArticleImageExportSupported
@@ -173,7 +173,7 @@ private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
 /**
  * 文章/回答详情页。
  *
- * 页面负责加载知乎回答或专栏文章，展示标题、作者、正文、附件视频、评论入口、分享/复制/朗读/浏览器打开等底部操作，
+ * 页面负责加载知乎回答或专栏文章，展示标题、作者、正文、附件视频、评论入口、分享/复制/浏览器打开等底部操作，
  * 正文主路径使用 Compose Markdown 渲染。回答页还承载同题回答切换手势和对应转场状态，因此改动时要同时关注
  * `answerSwitchMode`、`buttonSkipAnswer`、`autoHideArticleBottomBar`、`titleAutoHide`、`answerDoubleTapAction` 和
  * `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY`。
@@ -190,8 +190,6 @@ fun ArticleScreen(
     viewModel: ArticleViewModel,
 ) {
     val navigator = LocalNavigator.current
-    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
-    val readingPlayerOverlayOffsetState = LocalReadingPlayerOverlayOffsetState.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleNavController = LocalArticleNavController.current
     val backStackEntry by articleNavController?.currentBackStackEntryAsState()
@@ -239,15 +237,8 @@ fun ArticleScreen(
     }
     val userMessages = rememberUserMessageSink()
     val density = LocalDensity.current
-    val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
-    val effectiveScrollMaxValue by remember(readingPlayerOverlayPaddingPx) {
-        derivedStateOf {
-            if (scrollState.maxValue == Int.MAX_VALUE) {
-                Int.MAX_VALUE
-            } else {
-                (scrollState.maxValue - readingPlayerOverlayPaddingPx).coerceAtLeast(0)
-            }
-        }
+    val effectiveScrollMaxValue by remember {
+        derivedStateOf { scrollState.maxValue }
     }
     val latestEffectiveScrollMaxValue by rememberUpdatedState(effectiveScrollMaxValue)
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
@@ -285,7 +276,6 @@ fun ArticleScreen(
         navigator = navigator,
         navController = articleNavController,
         answerSwitchMode = answerSwitchMode,
-        readingQueueSourceId = article.readingQueueSourceId,
     )
     val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
     val pageTurnActive = !(useWebView && isLegacyWebViewSupported) &&
@@ -307,25 +297,6 @@ fun ArticleScreen(
             .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
     )
     val hapticFeedback = LocalHapticFeedback.current
-    val readingPlayerOverlayRouteId = articleNavController?.currentBackStackEntry?.id
-        ?: article.readingQueueSourceId
-        ?: "${article.type}:${article.id}"
-    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId, usesVerticalAnswerSwitch) {
-        if (usesVerticalAnswerSwitch) {
-            readingPlayerOverlayOffsetState?.beginRoute(readingPlayerOverlayRouteId)
-        }
-        onDispose {
-            if (usesVerticalAnswerSwitch) {
-                readingPlayerOverlayOffsetState?.endRoute(readingPlayerOverlayRouteId)
-            }
-        }
-    }
-    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayRouteId) {
-        { offsetPx: Float ->
-            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayRouteId, offsetPx)
-            Unit
-        }
-    }
 
     LaunchedEffect(sharedData, isImmersiveMode) {
         if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
@@ -394,7 +365,7 @@ fun ArticleScreen(
     }
 
     val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(
-        bottomBarState.obscuredHeightPx + readingPlayerOverlayPaddingPx,
+        bottomBarState.obscuredHeightPx,
     )
     LaunchedEffect(article.id) {
         answerNavigationState.prepareArticle()
@@ -822,24 +793,6 @@ fun ArticleScreen(
                                         )
                                     }
 
-                                    val ttsState = rememberArticleTtsState()
-                                    val toggleArticleSpeech = rememberArticleSpeechToggler()
-                                    AnimatedVisibility(visible = ttsState.isSpeaking) {
-                                        IconButton(
-                                            onClick = {
-                                                toggleArticleSpeech("", "")
-                                                userMessages.showMessage("已停止朗读")
-                                            },
-                                            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
-                                            colors = IconButtonDefaults.iconButtonColors(
-                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            ),
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                                        }
-                                    }
-
                                     Button(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
@@ -874,7 +827,6 @@ fun ArticleScreen(
                                 ActionBarContent()
                             }
                         }
-                        Spacer(modifier = Modifier.height(readingPlayerOverlayPadding))
                     }
                 }
             },
@@ -1151,7 +1103,6 @@ fun ArticleScreen(
                 isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
                 scrollState = scrollState,
                 answerSwitchSensitivity = answerSwitchSensitivity,
-                onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,
             ) {
                 MainContent()
             }
@@ -1229,9 +1180,6 @@ fun ArticleScreen(
     ArticleActionsMenu(
         article = article,
         viewModel = viewModel,
-        answerQueueFallbackProvider = sharedData?.navigator?.let { answerNavigator ->
-            { limit -> answerNavigator.remainingAnswersSnapshot(article.id, limit) }
-        },
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {
@@ -1245,9 +1193,9 @@ fun ArticleScreen(
         onExportRequest = { showExportDialog = true },
         onSetImmersiveDoubleTap = {
             showActionsMenu = false
-            // 沉浸式模式下，按返回键优先退出沉浸式，不会直接退出回答
+            // 菜单里切换沉浸式；开启预测性返回时，返回手势会退出沉浸式并离开页面
             isImmersiveMode = !isImmersiveMode
-            userMessages.showMessage("已进入沉浸式，按返回键即可退出")
+            userMessages.showMessage(if (isImmersiveMode) "已进入沉浸式" else "已退出沉浸式")
         },
     )
 
@@ -1265,9 +1213,24 @@ fun ArticleScreen(
         },
     )
 
-    // 沉浸式模式下，返回键优先退出沉浸式
-    PlatformBackHandler(enabled = isImmersiveMode) {
-        isImmersiveMode = false
+    // 沉浸式模式下也要保留预测性返回：手势照常驱动页面缩小，松手后退出沉浸式并离开页面，
+    // 不再被这里的普通返回拦截吞掉。关闭「预测性返回」时保持旧行为：返回键先退出沉浸式。
+    val detailBackGesture = LocalDetailBackGesture.current
+    if (detailBackGesture != null) {
+        PlatformPredictiveBackHandler(
+            enabled = isImmersiveMode,
+            onProgress = detailBackGesture.onProgress,
+            onCancel = detailBackGesture.onCancel,
+            onBack = {
+                isImmersiveMode = false
+                sharedData?.isImmersiveMode = false
+                detailBackGesture.onBack()
+            },
+        )
+    } else {
+        PlatformBackHandler(enabled = isImmersiveMode) {
+            isImmersiveMode = false
+        }
     }
 
     PlatformBackHandler(showActionsMenu) {

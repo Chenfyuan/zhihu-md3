@@ -135,7 +135,7 @@ const val APPEARANCE_SETTINGS_RESET_FAB_POSITION_TAG = "appearance_reset_fab_pos
 
 /** 所有可拖动悬浮按钮保存的位置键（DraggableRefreshButton 的 preferenceName） */
 val DRAGGABLE_FAB_PREFERENCE_NAMES = listOf(
-    "fabRefresh", "copyAll", "collectionRandomRefresh", "fabPageTurnComment", "buttonSkipAnswer", "readingPlayerCompact",
+    "fabRefresh", "copyAll", "collectionRandomRefresh", "fabPageTurnComment", "buttonSkipAnswer",
 )
 
 /** 清除悬浮按钮拖动位置，下次显示时回到默认位置 */

@@ -79,7 +79,6 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
-import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -103,7 +102,6 @@ import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 fun FeedCard(
     item: FeedDisplayItem,
     modifier: Modifier = Modifier,
-    readingQueueSourceId: String? = null,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
@@ -137,7 +135,7 @@ fun FeedCard(
     val isSelected = item.navDestination != null && item.navDestination == selectedDestination
     val selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
     val performClick: (FeedDisplayItem) -> Unit = { clickedItem ->
-        val destination = clickedItem.navDestination?.withReadingQueueSource(readingQueueSourceId)
+        val destination = clickedItem.navDestination
         if (onClick != null) {
             onClick(clickedItem, destination)
         } else {

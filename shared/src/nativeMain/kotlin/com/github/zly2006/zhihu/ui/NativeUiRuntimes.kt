@@ -64,42 +64,6 @@ import platform.Foundation.dataUsingEncoding
 import org.jetbrains.skia.Image as SkiaImage
 
 @Composable
-actual fun rememberArticleTtsState(): TtsState = NativeArticleSpeechController.currentState
-
-@Composable
-actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
-    val userMessages = rememberUserMessageSink()
-    val coroutineScope = rememberCoroutineScope()
-    val ttsState = NativeArticleSpeechController.currentState
-    return remember(userMessages, coroutineScope, ttsState) {
-        object : ArticleSpeechToggler {
-            override fun invoke(title: String, content: String) {
-                if (ttsState.isSpeaking) {
-                    NativeArticleSpeechController.stopSpeaking()
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    coroutineScope.launch {
-                        try {
-                            val textToRead = withContext(Dispatchers.Default) {
-                                articleSpeechText(title, content)
-                            }
-                            if (textToRead.isNotBlank()) {
-                                if (NativeArticleSpeechController.startSpeaking(textToRead)) {
-                                    userMessages.showMessage("开始朗读：$title")
-                                } else {
-                                    userMessages.showMessage("朗读启动失败")
-                                }
-                            }
-                        } catch (e: Exception) {
-                            userMessages.showMessage("朗读失败：${e.message}")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
     val openExternalUrl = rememberExternalUrlOpener()
     return remember(openExternalUrl) {

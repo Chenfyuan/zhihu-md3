@@ -40,8 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
-import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
@@ -58,10 +56,8 @@ import java.io.File
 @Composable
 actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
     val context = LocalContext.current
-    val ttsState = rememberArticleTtsState()
-    return produceState(initialValue = DeveloperInfoSnapshot(), context, ttsState) {
+    return produceState(initialValue = DeveloperInfoSnapshot(), context) {
         while (true) {
-            val readingState = AndroidReadingPlayerBridge.state.value
             value = DeveloperInfoSnapshot(
                 networkStatus = context.networkStatusText(),
                 powerSaveModeText =
@@ -71,9 +67,6 @@ actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
                         else -> null
                     },
                 continuousUsageDurationMs = ContinuousUsageReminderManager.currentElapsedForegroundMs(),
-                ttsState = ttsState,
-                currentTtsEngineLabel = readingState.engineLabel.ifBlank { "按需初始化" },
-                availableTtsEngineLabels = readingState.availableEngineLabels,
             )
             delay(1_000L)
         }

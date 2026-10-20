@@ -72,7 +72,6 @@ import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX
-import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
@@ -212,89 +211,6 @@ fun DeveloperSettingsScreen() {
                     settings.removeByPrefix(HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX)
                     userMessages.showShortMessage("已清除 online notification 和作者想法推送的已读记录")
                 }) { Text("清除所有 online notification 和作者想法推送已读记录") }
-            }
-
-            // TTS引擎信息显示
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                ) {
-                    Text(
-                        "语音朗读引擎信息",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "当前引擎",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            runtimeInfo.currentTtsEngineLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "引擎状态",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            if (runtimeInfo.ttsState.isSpeaking) {
-                                "正在朗读"
-                            } else if (runtimeInfo.ttsState != TtsState.Uninitialized) {
-                                "就绪"
-                            } else {
-                                "未就绪"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "引擎列表",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            runtimeInfo.availableTtsEngineLabels.joinToString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
-                    }
-                }
             }
         }
     }
