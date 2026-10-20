@@ -86,6 +86,9 @@ abstract class PaginationViewModel<T : Any>(
         protected set
     var errorMessage: String? = null
         protected set
+    /** 服务器以 401/403 拒绝了匿名请求：界面显示「登录后可看」，并停止自动加载，避免无限转圈。 */
+    var loginRequired: Boolean by mutableStateOf(false)
+        protected set
     var allowGuestAccess = false
     protected var lastPaging: ZhihuPaging? by mutableStateOf(null)
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
@@ -106,6 +109,7 @@ abstract class PaginationViewModel<T : Any>(
         currentJob = null
         isLoading = false
         errorMessage = null
+        loginRequired = false
         debugData.clear()
         allData.clear()
         lastPaging = null // 重置 lastPaging
@@ -172,7 +176,7 @@ abstract class PaginationViewModel<T : Any>(
 
     @OptIn(DelicateCoroutinesApi::class)
     open fun loadMore(environment: PaginationEnvironment) {
-        if (isLoading || isEnd) return // 使用新的isEnd getter
+        if (isLoading || isEnd || loginRequired) return // 使用新的isEnd getter
         isLoading = true
         currentJob = viewModelScope.launch {
             try {
@@ -185,6 +189,7 @@ abstract class PaginationViewModel<T : Any>(
 
     protected fun errorHandle(e: Exception) {
         if (e !is CancellationException) {
+            if (isLoginRequiredError(e)) loginRequired = true
             errorMessage = e.message
             isLoading = false
         }
@@ -572,3 +577,17 @@ data class HomeFeedFilterResult(
 
 @Composable
 expect fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment
+
+/** 知乎对匿名请求返回 401/403（如 need_login、40362）时视为需要登录；只做提示，不做任何绕过。 */
+fun isLoginRequiredError(e: Throwable?): Boolean {
+    var cur = e
+    while (cur != null) {
+        if (cur is com.github.zly2006.zhihu.util.HttpStatusException &&
+            (cur.status.value == 401 || cur.status.value == 403)
+        ) {
+            return true
+        }
+        cur = cur.cause
+    }
+    return false
+}

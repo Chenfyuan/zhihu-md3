@@ -73,6 +73,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -81,6 +82,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -210,6 +212,8 @@ fun homeOnlineNotificationTag(uuid: String): String = "$HOME_ONLINE_NOTIFICATION
 
 fun homePinAnnouncementReadKey(pinId: Long): String = "$HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX$pinId"
 
+const val HOME_GUEST_LOGIN_PROMPT_TAG = "home:guestLoginPrompt"
+
 // Pager can dispose this page while its feed ViewModels survive. Keep the header rows and
 // synchronization owner alive too, so restoring a saved list index does not shift the visible card.
 private class HomeScreenState(
@@ -272,6 +276,7 @@ fun HomeScreen(
     }
 
     val account = rememberAccountSettingsAccountState().value
+    var guestLoginPromptDismissed by rememberSaveable { mutableStateOf(false) }
     if (account.login && !account.hasRequiredCookie) {
         AlertDialog(
             onDismissRequest = {},
@@ -372,9 +377,8 @@ fun HomeScreen(
             ) {
                 remoteHistory.start(homeState.viewModelScope, baseEnvironment)
             }
-            if (!account.login && settings.getBoolean("loginForRecommendation", true)) {
-                requestLoginNavigation()
-            } else if (viewModel.displayItems.isEmpty()) {
+            // 未登录也直接加载推荐（游客模式），不再强制跳转登录页；登录入口见顶部提示卡片和「账号」页。
+            if (viewModel.displayItems.isEmpty()) {
                 val cachedItems = if (autoRefreshOnStartup) {
                     emptyList()
                 } else {
@@ -712,6 +716,19 @@ fun HomeScreen(
                     footer = ProgressIndicatorFooter,
                     key = { item -> item.stableKey },
                     topContent = {
+                        item("guest_login_prompt") {
+                            AnnouncementCard(
+                                modifier = Modifier.testTag(HOME_GUEST_LOGIN_PROMPT_TAG),
+                                visible = !account.login && !guestLoginPromptDismissed,
+                                title = "正在以游客身份浏览",
+                                content = "登录后可获得个性化推荐，并使用点赞、收藏、评论等功能。",
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null) },
+                                accept = { Text("登录") },
+                                onAccept = ::requestLoginNavigation,
+                                dismiss = { Text("先逛逛") },
+                                onDismiss = { guestLoginPromptDismissed = true },
+                            )
+                        }
                         item {
                             val availableUpdate = updateAnnouncement
 

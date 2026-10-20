@@ -699,6 +699,9 @@ fun CommentScreen(
                             }
                         }
 
+                        viewModel.loginRequired && viewModel.allData.isEmpty() -> {
+                            com.github.zly2006.zhihu.ui.components.LoginRequiredPrompt(message = "评论登录后可看")
+                        }
                         viewModel.errorMessage != null && viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)

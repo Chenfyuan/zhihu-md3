@@ -193,6 +193,7 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                 items = viewModel.allData,
                 onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
+                loginRequired = { viewModel.loginRequired },
                 reverseLayout = true,
                 contentPadding = PaddingValues(vertical = 12.dp),
                 modifier = Modifier.fillMaxSize(),

@@ -54,7 +54,10 @@ val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
             .padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (LocalPullToRefreshViewModel.current?.isPullToRefresh != true) {
+        val feedViewModel = LocalPullToRefreshViewModel.current
+        if (feedViewModel?.loginRequired == true) {
+            LoginRequiredPrompt()
+        } else if (feedViewModel?.isPullToRefresh != true) {
             CircularProgressIndicator()
         }
     }
@@ -123,6 +126,7 @@ fun <T> PaginatedList(
     listState: LazyListState = rememberLazyListState(),
     reverseLayout: Boolean = false,
     isEnd: () -> Boolean = { false },
+    loginRequired: () -> Boolean = { false },
     footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
     topContent: LazyListScope.() -> Unit = {},
@@ -147,7 +151,7 @@ fun <T> PaginatedList(
     }
 
     LaunchedEffect(shouldLoadMore, items.size, isEnd()) {
-        if (shouldLoadMore && items.isNotEmpty() && !isEnd()) {
+        if (shouldLoadMore && items.isNotEmpty() && !isEnd() && !loginRequired()) {
             onLoadMore()
             // 留一帧给调用方发布新数据或标记列表结束。
             delay(50)
@@ -176,7 +180,9 @@ fun <T> PaginatedList(
         bottomContent(this)
 
         item {
-            if (isEnd()) {
+            if (loginRequired()) {
+                LoginRequiredPrompt()
+            } else if (isEnd()) {
                 if (!showContentEndMarker) {
                     Box(
                         modifier = Modifier

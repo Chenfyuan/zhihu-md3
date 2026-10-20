@@ -238,7 +238,11 @@ fun QuestionScreen(
                 userMessages.showShortMessage("获取问题详情失败")
             }
         } catch (e: Exception) {
-            userMessages.showShortMessage("加载失败: ${e.message}")
+            if (com.github.zly2006.zhihu.viewmodel.isLoginRequiredError(e)) {
+                userMessages.showShortMessage("问题详情登录后可看")
+            } else {
+                userMessages.showShortMessage("加载失败: ${e.message}")
+            }
         }
     }
 
@@ -273,6 +277,7 @@ fun QuestionScreen(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
+                loginRequired = { viewModel.loginRequired },
                 key = { it.stableKey },
                 listState = listState,
                 modifier = Modifier

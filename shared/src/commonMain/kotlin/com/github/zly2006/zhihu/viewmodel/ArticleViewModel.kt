@@ -334,7 +334,7 @@ class ArticleViewModel(
                                 }
                             }
                         } else {
-                            content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
+                            content = LOAD_FAILED_HINT_HTML
                             endorsements = emptyList()
                             Log.e("ArticleViewModel", "Answer not found")
                         }
@@ -379,7 +379,7 @@ class ArticleViewModel(
                             )
                             environment.recordOpenEvent(this@ArticleViewModel.article, null)
                         } else {
-                            content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
+                            content = LOAD_FAILED_HINT_HTML
                             Log.e("ArticleViewModel", "Article not found")
                         }
                     }
@@ -387,6 +387,7 @@ class ArticleViewModel(
                     throw e
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load content", e)
+                    if (content.isBlank()) content = LOAD_FAILED_HINT_HTML
                 }
             }
         }
@@ -1145,3 +1146,8 @@ private data class AnswerRelationshipEndorsement(
     val type: String = "",
     val text: String = "",
 )
+
+/** 匿名访问时知乎常以 403 拒绝回答/文章详情：给出明确提示而不是空白页。 */
+internal const val LOAD_FAILED_HINT_HTML =
+    "<h1>你似乎来到了没有知识存在的荒原</h1><p>内容可能已被删除，或者知乎要求登录后才能查看。" +
+        "未登录时可前往「账号」页登录后再试。</p>"

@@ -120,6 +120,7 @@ fun HotListScreen(
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(HOT_LIST_LIST_TAG),
                 isEnd = { viewModel.isEnd },
+                loginRequired = { viewModel.loginRequired },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(

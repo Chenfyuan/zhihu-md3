@@ -894,6 +894,7 @@ fun PeopleScreen(
                                 listState = listState,
                                 onLoadMore = { viewModel.answersFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.answersFeedModel.isEnd },
+                                loginRequired = { viewModel.answersFeedModel.loginRequired },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -931,6 +932,7 @@ fun PeopleScreen(
                                 listState = listState,
                                 onLoadMore = { viewModel.articlesFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.articlesFeedModel.isEnd },
+                                loginRequired = { viewModel.articlesFeedModel.loginRequired },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -957,6 +959,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.activitiesFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.activitiesFeedModel.isEnd },
+                            loginRequired = { viewModel.activitiesFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -979,6 +982,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.collectionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.collectionsFeedModel.isEnd },
+                            loginRequired = { viewModel.collectionsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1000,6 +1004,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.questionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.questionsFeedModel.isEnd },
+                            loginRequired = { viewModel.questionsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1021,6 +1026,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.pinsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.pinsFeedModel.isEnd },
+                            loginRequired = { viewModel.pinsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1043,6 +1049,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.columnsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.columnsFeedModel.isEnd },
+                            loginRequired = { viewModel.columnsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1064,6 +1071,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.followersFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followersFeedModel.isEnd },
+                            loginRequired = { viewModel.followersFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1086,6 +1094,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.followingFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followingFeedModel.isEnd },
+                            loginRequired = { viewModel.followingFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1174,6 +1183,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(0) },
                 isEnd = { viewModel.followingColumnsFeedModel.isEnd },
+                loginRequired = { viewModel.followingColumnsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1192,6 +1202,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(1) },
                 isEnd = { viewModel.followingTopicsFeedModel.isEnd },
+                loginRequired = { viewModel.followingTopicsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1207,6 +1218,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(2) },
                 isEnd = { viewModel.followingQuestionsFeedModel.isEnd },
+                loginRequired = { viewModel.followingQuestionsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1222,6 +1234,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(3) },
                 isEnd = { viewModel.followingCollectionsFeedModel.isEnd },
+                loginRequired = { viewModel.followingCollectionsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()

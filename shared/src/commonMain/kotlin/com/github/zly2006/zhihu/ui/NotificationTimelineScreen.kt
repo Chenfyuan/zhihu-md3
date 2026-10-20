@@ -129,6 +129,7 @@ fun NotificationTimelineScreen(
                 items = viewModel.allData,
                 onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
+                loginRequired = { viewModel.loginRequired },
                 listState = listState,
                 modifier = Modifier
                     .fillMaxSize()
