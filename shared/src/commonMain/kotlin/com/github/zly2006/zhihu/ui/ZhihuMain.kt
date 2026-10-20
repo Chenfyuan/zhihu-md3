@@ -17,6 +17,11 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -153,7 +158,6 @@ import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.Animatable
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -365,14 +369,13 @@ fun ZhihuMain(
     val isAccountSurface = currentMainTabDestination == Account
 
     // 预测性返回：读取设置「启用预测性返回」（enable_predictive_back，默认开）。
-    // 开启时详情页（问题/回答/搜索结果打开的详情等）跟手缩小+轻微右移，松手后再出栈；关闭时保持普通返回。
+    // 开启时返回手势让详情页跟手横向滑出、下层列表带视差跟进，松手后滑完剩余距离再出栈，取消则回弹；不缩放、不加圆角。
     val predictiveBackEnabled by rememberObservedSetting(settings, "enable_predictive_back") { getBoolean("enable_predictive_back", true) }
-    val detailBackProgress = remember { Animatable(0f) }
     val detailBackScope = rememberCoroutineScope()
-    val mainDetailBackEnabled = navEntry != null && !showMainNavigation && !showDetailPane
 
     // 窄屏时阅读页（回答/文章/想法）由详情栈承载并覆盖在列表之上。详情栈只剩这一页时，
-    // 出栈会让整个详情层消失，NavHost 自己的出场动画来不及播放，所以这里先把详情层滑出再出栈。
+    // 出栈会让整个详情层消失，NavHost 自己的出场动画来不及播放，所以由这里驱动详情层的横向位移。
+    // detailOverlaySlide：0 = 详情完全展示，1 = 详情完全滑出到右侧。
     val detailOverlaySlide = remember { Animatable(1f) }
     var detailOverlayExiting by remember { mutableStateOf(false) }
     val isNarrowDetailOverlay = showDetailPane && !showListDetail
@@ -384,45 +387,42 @@ fun ZhihuMain(
             detailOverlayExiting = false
         }
     }
+    // 只有「返回会离开整层详情」时由这里接管手势；详情栈内部的多页返回、宽屏分栏交给 NavHost 自带的跟手转场。
+    val overlayBackActive = isNarrowDetailOverlay &&
+        detailEntry != null &&
+        detailNavController.previousBackStackEntry?.destination?.hasRoute<EmptyDetail>() == true
 
     fun popDetail() {
-        val leavesOverlay = isNarrowDetailOverlay &&
-            detailNavController.previousBackStackEntry?.destination?.hasRoute<EmptyDetail>() == true
-        if (!leavesOverlay) {
+        if (!overlayBackActive) {
             detailNavController.popBackStack()
-            detailBackScope.launch { detailBackProgress.snapTo(0f) }
             return
         }
         if (detailOverlayExiting) return
         detailOverlayExiting = true
         detailBackScope.launch {
-            detailOverlaySlide.animateTo(1f, tween(250))
+            val remaining = 1f - detailOverlaySlide.value
+            detailOverlaySlide.animateTo(1f, tween((280 * remaining).toInt().coerceAtLeast(90)))
             detailNavController.popBackStack()
-            detailBackProgress.snapTo(0f)
         }
     }
 
-    val detailBackGesture = if (predictiveBackEnabled) {
+    val detailBackGesture = if (predictiveBackEnabled && overlayBackActive) {
         DetailBackGesture(
-            onProgress = { p -> detailBackScope.launch { detailBackProgress.snapTo(p) } },
-            onCancel = { detailBackScope.launch { detailBackProgress.animateTo(0f, tween(180)) } },
-            onBack = {
-                if (showDetailPane) {
-                    popDetail()
-                } else {
-                    navController.popBackStack()
-                    detailBackScope.launch { detailBackProgress.snapTo(0f) }
-                }
+            onProgress = { p ->
+                if (!detailOverlayExiting) detailBackScope.launch { detailOverlaySlide.snapTo(predictiveBackTranslationFraction(p)) }
             },
+            onCancel = {
+                detailBackScope.launch { detailOverlaySlide.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+            },
+            onBack = { popDetail() },
         )
     } else {
         null
     }
 
     /**
-     * 必须放在对应 NavHost 之后组合：NavHost 自己也注册了返回回调（返回栈多于一页时启用），
-     * 后注册的回调优先。以前这里写在 NavHost 之前，手势被 NavHost 抢走，页面缩小从未生效；
-     * 阅读页又在详情栈里，NavHost 出栈后整层直接消失，看起来就是没有返回动画。
+     * 必须放在详情 NavHost 之后组合：NavHost 自己也注册了返回回调（返回栈多于一页时启用），
+     * 后注册的回调优先，否则手势会被 NavHost 抢走，详情层整层消失、没有跟手动画。
      */
     @Composable
     fun DetailBackHandler(enabled: Boolean) {
@@ -434,9 +434,7 @@ fun ZhihuMain(
                 onBack = detailBackGesture.onBack,
             )
         } else {
-            PlatformBackHandler(enabled = enabled) {
-                if (showDetailPane) popDetail() else navController.popBackStack()
-            }
+            PlatformBackHandler(enabled = enabled) { popDetail() }
         }
     }
 
@@ -547,13 +545,12 @@ fun ZhihuMain(
                 navController = detailNavController,
                 startDestination = EmptyDetail,
                 modifier = modifier
-                    .predictiveBackLayer { detailBackProgress.value }
                     .testTag("detail_pane")
                     .background(MaterialTheme.colorScheme.background),
                 enterTransition = { slideInHorizontally(tween(300)) { it } },
                 exitTransition = { listExitTransition() },
-                popEnterTransition = { EnterTransition.None },
-                popExitTransition = { slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300)) },
+                popEnterTransition = { listPopEnterTransition() },
+                popExitTransition = { detailPopExitTransition() },
             ) {
                 composable<EmptyDetail> {
                     EmptyDetailPane()
@@ -570,7 +567,7 @@ fun ZhihuMain(
                 }
                 accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
             }
-            DetailBackHandler(enabled = showDetailPane)
+            DetailBackHandler(enabled = overlayBackActive)
         }
     }
 
@@ -604,6 +601,19 @@ fun ZhihuMain(
             paneStateHolder.SaveableStateProvider("list") {
                 Scaffold(
                     modifier = listPaneModifier
+                        .then(
+                            if (isNarrowDetailOverlay) {
+                                Modifier
+                                    .graphicsLayer {
+                                        translationX = size.width * listParallaxFraction(detailOverlaySlide.value)
+                                    }.drawWithContent {
+                                        drawContent()
+                                        drawRect(Color.Black, alpha = listScrimAlpha(detailOverlaySlide.value))
+                                    }
+                            } else {
+                                Modifier
+                            },
+                        )
                         .testTag("list_pane")
                         .nestedScroll(bottomBarScrollConnection),
                     bottomBar = {
@@ -728,7 +738,6 @@ fun ZhihuMain(
                     ) {
                         NavHost(
                             navController,
-                            modifier = Modifier.predictiveBackLayer { if (mainDetailBackEnabled) detailBackProgress.value else 0f },
                             startDestination = MainTabs,
                             enterTransition = {
                                 slideInHorizontally(tween(300)) { it }
@@ -736,11 +745,12 @@ fun ZhihuMain(
                             exitTransition = {
                                 listExitTransition()
                             },
+                            // 问题/搜索等主栈页面的返回手势由 NavHost 自带的预测返回驱动这两段转场（跟手横滑 + 列表视差）。
                             popEnterTransition = {
-                                EnterTransition.None
+                                listPopEnterTransition()
                             },
                             popExitTransition = {
-                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                                detailPopExitTransition()
                             },
                         ) {
                             composable<MainTabs> {
@@ -823,12 +833,7 @@ fun ZhihuMain(
                                     if (targetState.destination.hasRoute<Search>()) {
                                         ExitTransition.None
                                     } else {
-                                        fadeOut(animationSpec = tween(durationMillis = 180)) +
-                                            slideOutVertically(animationSpec = tween(durationMillis = 220)) { it / 20 } +
-                                            scaleOut(
-                                                animationSpec = tween(durationMillis = 220),
-                                                targetScale = 0.985f,
-                                            )
+                                        detailPopExitTransition()
                                     }
                                 },
                             ) { navEntry ->
@@ -877,7 +882,6 @@ fun ZhihuMain(
                                 sentenceSimilarityContent()
                             }
                         }
-                        DetailBackHandler(enabled = mainDetailBackEnabled)
                     }
                 }
             }
@@ -1141,10 +1145,20 @@ private fun NavGraphBuilder.accountSettings(
 }
 
 
-/** 列表 → 详情：列表轻微缩小 + 淡出，避免原先 ExitTransition.None 的突兀感。 */
+/** 列表 → 详情：列表向左轻微视差滑开，不缩放。 */
 fun listExitTransition(): ExitTransition =
-    fadeOut(tween(durationMillis = 220), targetAlpha = 0.6f) +
-        scaleOut(tween(durationMillis = 300), targetScale = 0.94f)
+    slideOutHorizontally(tween(300)) { -(it * LIST_PARALLAX_FRACTION).toInt() }
+
+/**
+ * 返回时列表从视差位置滑回原位。用线性曲线：预测返回会按手势进度定位到转场的对应时刻，
+ * 线性才能让页面位置和手指位置一一对应。
+ */
+fun listPopEnterTransition(): EnterTransition =
+    slideInHorizontally(tween(300, easing = LinearEasing)) { -(it * LIST_PARALLAX_FRACTION).toInt() }
+
+/** 返回时详情页向右整页滑出（线性，原因同上）。 */
+fun detailPopExitTransition(): ExitTransition =
+    slideOutHorizontally(tween(300, easing = LinearEasing)) { it }
 
 /** 详情页返回手势的回调，阅读页内部的返回拦截（如沉浸式）可以借此让手势继续驱动页面缩小。 */
 class DetailBackGesture(
@@ -1158,20 +1172,14 @@ val LocalDetailBackGesture = staticCompositionLocalOf<DetailBackGesture?> { null
 
 const val DETAIL_OVERLAY_TAG = "detail_overlay"
 
-/** 预测性返回：进度 0→1 时缩放到 1→0.9 */
-fun predictiveBackScale(progress: Float): Float = 1f - 0.1f * progress.coerceIn(0f, 1f)
+/** 下层列表的视差距离（相对宽度）。 */
+const val LIST_PARALLAX_FRACTION = 0.3f
 
-/** 预测性返回：进度 0→1 时水平位移比例（相对宽度） */
-fun predictiveBackTranslationFraction(progress: Float): Float = 0.06f * progress.coerceIn(0f, 1f)
+/** 预测性返回：手势进度 0→1 对应详情页向右位移 0→整页宽度，不缩放。 */
+fun predictiveBackTranslationFraction(progress: Float): Float = progress.coerceIn(0f, 1f)
 
-/** 预测性返回手势进度 0..1 → 页面缩小到 90%、右移 */
-fun Modifier.predictiveBackLayer(progress: () -> Float): Modifier = graphicsLayer {
-    val p = progress().coerceIn(0f, 1f)
-    if (p > 0f) {
-        val s = predictiveBackScale(p)
-        scaleX = s
-        scaleY = s
-        translationX = size.width * predictiveBackTranslationFraction(p)
-        transformOrigin = TransformOrigin(1f, 0.5f)
-    }
-}
+/** 详情位移 0→1 时，下层列表从 -0.3 宽度滑回 0。 */
+fun listParallaxFraction(detailSlide: Float): Float = -LIST_PARALLAX_FRACTION * (1f - detailSlide.coerceIn(0f, 1f))
+
+/** 下层列表上的浅色遮罩，详情完全展示时最深，滑出过程中淡掉。 */
+fun listScrimAlpha(detailSlide: Float): Float = 0.18f * (1f - detailSlide.coerceIn(0f, 1f))

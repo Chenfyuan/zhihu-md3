@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -44,7 +45,7 @@ import java.io.File
 /**
  * 阅读页（回答/文章/想法）的返回手势与转场。
  *
- * 手机上这些页面放在详情栈里、盖在列表之上。以前列表和详情互斥组合，打开和返回都是硬切，手势缩小时背后也没有列表；
+ * 手机上这些页面放在详情栈里、盖在列表之上。以前列表和详情互斥组合，打开和返回都是硬切，手势时背后也没有列表；
  * 沉浸式模式下文章页自己的普通返回拦截还会把手势吞掉。这里用真实 MainActivity 驱动系统返回手势验证。
  */
 @RunWith(AndroidJUnit4::class)
@@ -66,8 +67,12 @@ class ReadingPagePredictiveBackTest {
     private fun count(tag: String) =
         compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes(atLeastOneRootRequired = false).size
 
-    private fun detailWidth(): Float =
-        compose.onAllNodesWithTag("detail_pane", useUnmergedTree = true).fetchSemanticsNodes().first().boundsInRoot.width
+    private fun bounds(tag: String) =
+        compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().first().boundsInRoot
+
+    private fun detailWidth(): Float = bounds("detail_pane").width
+
+    private fun detailLeft(): Float = bounds("detail_pane").left
 
     private fun settle(ms: Long = 1_500) {
         compose.mainClock.advanceTimeBy(ms)
@@ -96,48 +101,84 @@ class ReadingPagePredictiveBackTest {
         File(outDir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
-    private fun assertGestureShrinksAndCloses(shotName: String) {
+    private fun assertGestureSlidesAndCloses(shotName: String) {
         assertTrue("阅读页打开时列表应留在下层", count("list_pane") > 0)
         val fullWidth = detailWidth()
+        assertEquals("打开动画结束后详情应贴齐左边", 0f, detailLeft(), 1f)
+        assertEquals("详情展示时列表停在 -0.3 宽度的视差位置", -0.3f * fullWidth, bounds("list_pane").left, 2f)
         startGesture(0.5f)
-        val midWidth = detailWidth()
-        assertEquals("手势进度 0.5 时页面应缩小到 95%", fullWidth * predictiveBackScale(0.5f), midWidth, fullWidth * 0.01f)
+        assertEquals("手势进度 0.5 时详情不缩放", fullWidth, detailWidth(), 1f)
+        assertEquals("手势进度 0.5 时详情右移半屏", fullWidth * 0.5f, detailLeft(), 2f)
+        assertEquals("列表视差跟到 -0.15 宽度", -0.15f * fullWidth, bounds("list_pane").left, 2f)
         shoot(shotName)
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.mainClock.advanceTimeBy(64)
+        compose.waitForIdle()
+        if (count(DETAIL_OVERLAY_TAG) > 0) {
+            assertTrue("松手后从当前位置继续滑出，不能跳回", detailLeft() >= fullWidth * 0.5f - 1f)
+        }
         settle()
         assertEquals("松手后阅读页应关闭", 0, count(DETAIL_OVERLAY_TAG))
-        assertTrue("返回后列表可见", count("list_pane") > 0)
+        assertEquals("返回后列表回到原位", 0f, bounds("list_pane").left, 1f)
     }
 
     @Test
     fun pinPageFollowsBackGestureAndKeepsListBehind() {
         openReadingPage(Pin(id = 1L))
-        assertGestureShrinksAndCloses("reading-back-mid-pin")
+        assertGestureSlidesAndCloses("slideback-mid-pin")
     }
 
     @Test
     fun answerPageFollowsBackGesture() {
         openReadingPage(Article(type = ArticleType.Answer, id = 1L, title = "离线回答"))
-        assertGestureShrinksAndCloses("reading-back-mid-answer")
+        assertGestureSlidesAndCloses("slideback-mid-answer")
     }
 
     @Test
     fun immersiveAnswerStillFollowsBackGesture() {
         compose.runOnIdle { sharedArticleAnswerSwitchState.isImmersiveMode = true }
         openReadingPage(Article(type = ArticleType.Answer, id = 2L, title = "沉浸式回答"))
-        assertGestureShrinksAndCloses("reading-back-mid-immersive")
+        assertGestureSlidesAndCloses("slideback-mid-immersive")
         assertTrue("离开页面后应退出沉浸式", !sharedArticleAnswerSwitchState.isImmersiveMode)
+    }
+
+    @Test
+    fun articlePageFollowsBackGesture() {
+        openReadingPage(Article(type = ArticleType.Article, id = 4L, title = "离线文章"))
+        assertGestureSlidesAndCloses("slideback-mid-article")
+    }
+
+    @Test
+    fun questionPageInMainStackSlidesWithGesture() {
+        compose.waitUntil(timeoutMillis = 20_000) { count("list_pane") > 0 }
+        compose.runOnUiThread { compose.activity.navigate(Question(questionId = 5L, title = "离线问题")) }
+        compose.waitUntil(timeoutMillis = 10_000) { count(QUESTION_SCREEN_LIST_TAG) > 0 }
+        settle()
+        val width = bounds("list_pane").width
+        assertEquals(0f, bounds(QUESTION_SCREEN_LIST_TAG).left, 2f)
+        startGesture(0.5f)
+        val left = bounds(QUESTION_SCREEN_LIST_TAG).left
+        assertTrue("问题页应随手势右移而不是缩小，实际 left=$left", left > width * 0.4f && left < width * 0.6f)
+        assertEquals(
+            "不缩放（屏外部分被裁掉，看可见宽度 = 屏宽 - 左移量）",
+            width - left,
+            bounds(QUESTION_SCREEN_LIST_TAG).width,
+            2f,
+        )
+        shoot("slideback-mid-question")
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        settle()
+        assertEquals("松手后问题页关闭", 0, count(QUESTION_SCREEN_LIST_TAG))
     }
 
     @Test
     fun cancelledGestureRestoresPage() {
         openReadingPage(Pin(id = 3L))
-        val fullWidth = detailWidth()
         startGesture(0.6f)
-        assertTrue(detailWidth() < fullWidth)
+        assertTrue("取消前详情已右移", detailLeft() > 100f)
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() }
         settle()
-        assertEquals(fullWidth, detailWidth(), 1f)
+        assertEquals("取消后回弹到原位", 0f, detailLeft(), 1f)
         assertTrue("取消后阅读页仍在", count(DETAIL_OVERLAY_TAG) > 0)
     }
 }

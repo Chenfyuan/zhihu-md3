@@ -43,8 +43,6 @@ import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.GlassBarTab
 import com.github.zly2006.zhihu.ui.components.LocalGlassBarSource
 import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
-import com.github.zly2006.zhihu.ui.predictiveBackLayer
-import com.github.zly2006.zhihu.ui.predictiveBackScale
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -129,36 +127,6 @@ abstract class GlassFabAndPredictiveBackBase(private val suffix: String) {
         compose.onNodeWithTag(HOME_REFRESH_BUTTON_TAG).assertIsDisplayed()
         compose.onNodeWithTag(HOME_CREATE_FAB_TAG).assertIsDisplayed()
         shoot("glassfab")
-    }
-
-    @Test
-    fun predictiveBackMidGesture() {
-        compose.setContent {
-            ZhihuTheme {
-                // 外层铺底色，内层带 progress=0.5 的缩放；截图应能看出四周露出底色（缩小到 95%）
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.Surface(
-                        Modifier
-                            .fillMaxSize()
-                            .padding(12.dp)
-                            .predictiveBackLayer { 0.5f }
-                            .testTag("predictive_back_page"),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                    ) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                "预测返回进度 0.5\n应缩小到 95%",
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        compose.waitForIdle()
-        assertEquals(0.95f, predictiveBackScale(0.5f), 1e-5f)
-        shoot("predictive-back-mid")
     }
 
     @Test
