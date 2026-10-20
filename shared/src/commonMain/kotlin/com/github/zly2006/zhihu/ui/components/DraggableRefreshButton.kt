@@ -121,53 +121,64 @@ fun DraggableRefreshButton(
     val opacityFraction = remember(settings) {
         settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
     }
-    FloatingActionButton(
-        onClick = onClick,
-        shape = CircleShape,
-        containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction),
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction),
-        elevation = if (opacityFraction < 1f) {
-            FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-        } else {
-            FloatingActionButtonDefaults.elevation()
-        },
-        modifier = modifier
-            .offset { IntOffset(displayedOffsetX.roundToInt(), displayedOffsetY.roundToInt()) }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = {
-                        offsetX = animatedOffsetX
-                        offsetY = animatedOffsetY
-                        pressing = true
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    onDragEnd = {
-                        pressing = false
+    val dragModifier = modifier
+        .offset { IntOffset(displayedOffsetX.roundToInt(), displayedOffsetY.roundToInt()) }
+        .pointerInput(Unit) {
+            detectDragGestures(
+                onDragStart = {
+                    offsetX = animatedOffsetX
+                    offsetY = animatedOffsetY
+                    pressing = true
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                },
+                onDragEnd = {
+                    pressing = false
+                    adjustFabPosition()
+                    val screenWidth = screenSize.width.toFloat()
+                    with(density) {
+                        val minX = FAB_EDGE_MARGIN.toPx()
+                        val maxX = (screenWidth - 56.dp.toPx() - FAB_EDGE_MARGIN.toPx()).coerceAtLeast(minX)
+                        offsetX = if (offsetX < screenWidth / 2) minX else maxX
+                    }
+                    settings.putFloat("$preferenceName-x", offsetX)
+                    settings.putFloat("$preferenceName-y", offsetY)
+                },
+                onDrag = { change, dragAmount ->
+                    change.consume()
+                    if (pressing) {
+                        offsetX += dragAmount.x
+                        offsetY += dragAmount.y
                         adjustFabPosition()
-                        val screenWidth = screenSize.width.toFloat()
-                        with(density) {
-                            offsetX =
-                                if (offsetX < screenWidth / 2) {
-                                    0f
-                                } else {
-                                    screenWidth - 56.dp.toPx()
-                                }
-                        }
-                        settings.putFloat("$preferenceName-x", offsetX)
-                        settings.putFloat("$preferenceName-y", offsetY)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        if (pressing) {
-                            offsetX += dragAmount.x
-                            offsetY += dragAmount.y
-                            adjustFabPosition()
-                        }
-                    },
-                )
+                    }
+                },
+            )
+        }
+    val glassProvider = LocalGlassBottomBarProvider.current
+    val glassSource = LocalGlassBarSource.current
+    if (glassProvider != null && glassSource != null) {
+        // 玻璃 FAB：必须在 contentSource 模糊层之外（首页已把列表和 FAB 拆开）
+        glassProvider.Fab(
+            source = glassSource,
+            onClick = onClick,
+            modifier = dragModifier,
+            opacity = opacityFraction,
+            content = content,
+        )
+    } else {
+        FloatingActionButton(
+            onClick = onClick,
+            shape = CircleShape,
+            containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction),
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction),
+            elevation = if (opacityFraction < 1f) {
+                FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+            } else {
+                FloatingActionButtonDefaults.elevation()
             },
-        content = content,
-    )
+            modifier = dragModifier,
+            content = content,
+        )
+    }
 }
 
 

@@ -67,6 +67,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import com.github.zly2006.zhihu.ui.components.GlassBarTab
+import com.github.zly2006.zhihu.ui.components.LocalGlassBarSource
 import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -718,6 +719,7 @@ fun ZhihuMain(
                     },
                 ) { innerPadding ->
                     CompositionLocalProvider(
+                        LocalGlassBarSource provides glassBarSource,
                         LocalLifecycleOwner provides listLifecycleOwner,
                         LocalArticleNavController provides navController,
                         LocalNavigator provides Navigator(
@@ -743,13 +745,7 @@ fun ZhihuMain(
                     ) {
                         NavHost(
                             navController,
-                            modifier = (
-                                if (glassBarProvider != null && glassBarSource != null) {
-                                    glassBarProvider.contentSource(Modifier, glassBarSource)
-                                } else {
-                                    Modifier
-                                }
-                            ).predictiveBackLayer { if (mainDetailBackEnabled) detailBackProgress.value else 0f }
+                            modifier = Modifier.predictiveBackLayer { if (mainDetailBackEnabled) detailBackProgress.value else 0f }
                                 .pointerInput(Unit) {
                                 while (true) {
                                     awaitPointerEventScope {
@@ -1050,12 +1046,21 @@ private fun MainTabsPager(
     collectionDirectBrowseEnabled: Boolean,
     showHomeTopActions: Boolean,
 ) {
+    val glassProvider = LocalGlassBottomBarProvider.current
+    val glassSource = LocalGlassBarSource.current
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
         pageNestedScrollConnection = NoOpPagerNestedScrollConnection,
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
+        val pageModifier =
+            if (glassProvider != null && glassSource != null && page != MainTabPage.HomePage) {
+                glassProvider.contentSource(Modifier.fillMaxSize(), glassSource)
+            } else {
+                Modifier.fillMaxSize()
+            }
+        Box(pageModifier) {
         when (page) {
             MainTabPage.HomePage -> HomeScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
@@ -1093,6 +1098,7 @@ private fun MainTabsPager(
                 isActive = pagerState.currentPage == pageIndex,
             )
         }
+        } // Box contentSource / fillMaxSize
     }
 }
 
@@ -1233,18 +1239,24 @@ private fun NavGraphBuilder.accountSettings(
 
 
 /** 列表 → 详情：列表轻微缩小 + 淡出，避免原先 ExitTransition.None 的突兀感。 */
-internal fun listExitTransition(): ExitTransition =
+fun listExitTransition(): ExitTransition =
     fadeOut(tween(durationMillis = 220), targetAlpha = 0.6f) +
         scaleOut(tween(durationMillis = 300), targetScale = 0.94f)
 
-/** 预测性返回手势进度 0..1 → 页面缩小到 90%、右移、圆角感由缩放体现 */
-internal fun Modifier.predictiveBackLayer(progress: () -> Float): Modifier = graphicsLayer {
+/** 预测性返回：进度 0→1 时缩放到 1→0.9 */
+fun predictiveBackScale(progress: Float): Float = 1f - 0.1f * progress.coerceIn(0f, 1f)
+
+/** 预测性返回：进度 0→1 时水平位移比例（相对宽度） */
+fun predictiveBackTranslationFraction(progress: Float): Float = 0.06f * progress.coerceIn(0f, 1f)
+
+/** 预测性返回手势进度 0..1 → 页面缩小到 90%、右移 */
+fun Modifier.predictiveBackLayer(progress: () -> Float): Modifier = graphicsLayer {
     val p = progress().coerceIn(0f, 1f)
     if (p > 0f) {
-        val s = 1f - 0.1f * p
+        val s = predictiveBackScale(p)
         scaleX = s
         scaleY = s
-        translationX = size.width * 0.06f * p
+        translationX = size.width * predictiveBackTranslationFraction(p)
         transformOrigin = TransformOrigin(1f, 0.5f)
     }
 }

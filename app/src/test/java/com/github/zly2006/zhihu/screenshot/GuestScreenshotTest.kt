@@ -45,6 +45,8 @@ import com.github.zly2006.zhihu.ui.HotListScreen
 import com.github.zly2006.zhihu.ui.SearchScreen
 import com.github.zly2006.zhihu.ui.components.GlassBarTab
 import com.github.zly2006.zhihu.ui.glass.AndroidGlassBottomBarProvider
+import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
+import com.github.zly2006.zhihu.ui.components.LocalGlassBarSource
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
@@ -141,16 +143,19 @@ abstract class GuestScreenshotBase(private val suffix: String) {
     private fun setShell(selected: Int, content: @Composable (PaddingValues) -> Unit) {
         compose.setContent {
             ZhihuTheme {
+                val p = AndroidGlassBottomBarProvider
+                val source = p.rememberSource()
                 CompositionLocalProvider(
                     LocalViewModelStoreOwner provides compose.activity,
                     LocalNavigator provides Navigator(onNavigate = {}, onNavigateBack = {}, onNavigateTopLevel = {}),
+                    LocalGlassBottomBarProvider provides p,
+                    LocalGlassBarSource provides source,
                 ) {
-                    val p = AndroidGlassBottomBarProvider
-                    val source = p.rememberSource()
                     Scaffold(
                         bottomBar = { p.Bar(source, tabs, selected, {}, Modifier) },
                     ) { inner ->
-                        Box(p.contentSource(Modifier.fillMaxSize(), source)) { content(inner) }
+                        // 首页自己拆分模糊层与 FAB；其它页由调用方决定
+                        content(inner)
                     }
                 }
             }

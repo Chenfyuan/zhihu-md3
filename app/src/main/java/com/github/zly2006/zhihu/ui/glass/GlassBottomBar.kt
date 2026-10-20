@@ -1,5 +1,15 @@
 package com.github.zly2006.zhihu.ui.glass
 
+import androidx.compose.runtime.remember
+
+import androidx.compose.material3.LocalContentColor
+
+import androidx.compose.foundation.layout.size
+
+import androidx.compose.foundation.layout.Box
+
+import androidx.compose.foundation.interaction.MutableInteractionSource
+
 import androidx.compose.ui.semantics.selected
 
 import androidx.compose.ui.semantics.semantics
@@ -139,6 +149,54 @@ object AndroidGlassBottomBarProvider : GlassBottomBarProvider {
                     }
                     }
                 }
+            }
+        }
+    }
+
+    @Composable
+    override fun Fab(
+        source: Any,
+        onClick: () -> Unit,
+        modifier: Modifier,
+        opacity: Float,
+        content: @Composable () -> Unit,
+    ) {
+        val cs = MaterialTheme.colorScheme
+        val a = opacity.coerceIn(0.1f, 1f)
+        val supported = isRenderEffectSupported() && LocalLiquidGlassEnabled.current
+        // 降级：半透明 surfaceContainer，保证图标可读；真玻璃：vibrancy+blur，表面再叠一层带透明度的底色
+        val fallback = cs.surfaceContainer.copy(alpha = (0.92f * a).coerceIn(0.35f, 0.96f))
+        val tint = cs.surfaceContainer.copy(alpha = (0.42f * a).coerceIn(0.18f, 0.72f))
+        Box(
+            modifier
+                .size(56.dp)
+                .then(
+                    if (supported) {
+                        Modifier.drawBackdrop(
+                            backdrop = source as Backdrop,
+                            shape = { Capsule() },
+                            effects = {
+                                vibrancy()
+                                blur(8.dp.toPx())
+                                lens(16.dp.toPx(), 16.dp.toPx())
+                            },
+                            highlight = { Highlight.Default.copy(alpha = 0.35f) },
+                            onDrawSurface = { drawRect(tint) },
+                        )
+                    } else {
+                        Modifier.clip(CircleShape).background(fallback)
+                    },
+                )
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
+                content()
             }
         }
     }

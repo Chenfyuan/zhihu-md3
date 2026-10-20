@@ -32,6 +32,22 @@ interface GlassBottomBarProvider {
         onSelect: (Int) -> Unit,
         modifier: Modifier,
     )
+
+    /**
+     * 圆形玻璃悬浮按钮。必须画在 [contentSource] 标记的模糊层之外（与底栏同层），
+     * 否则会采样到自己。opacity 控制玻璃底色透明度（对应 PREF_FAB_OPACITY）。
+     */
+    @Composable
+    fun Fab(
+        source: Any,
+        onClick: () -> Unit,
+        modifier: Modifier,
+        opacity: Float,
+        content: @Composable () -> Unit,
+    )
 }
 
 val LocalGlassBottomBarProvider = staticCompositionLocalOf<GlassBottomBarProvider?> { null }
+
+/** 与底栏共用的模糊源；由主壳提供，悬浮按钮在模糊层外读取它。 */
+val LocalGlassBarSource = staticCompositionLocalOf<Any?> { null }

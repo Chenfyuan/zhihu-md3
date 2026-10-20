@@ -140,6 +140,8 @@ import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
+import com.github.zly2006.zhihu.ui.components.LocalGlassBarSource
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
@@ -499,7 +501,17 @@ fun HomeScreen(
             (!account.login || account.hasRequiredCookie),
     )
 
+    val glassProvider = LocalGlassBottomBarProvider.current
+    val glassSource = LocalGlassBarSource.current
     Box(modifier = Modifier.fillMaxSize()) {
+        // 模糊层只包列表；刷新/+ 在层外，与玻璃底栏共用 glassBarSource
+        Box(
+            modifier = if (glassProvider != null && glassSource != null) {
+                glassProvider.contentSource(Modifier.fillMaxSize(), glassSource)
+            } else {
+                Modifier.fillMaxSize()
+            },
+        ) {
         Scaffold(
             modifier = if (duo3HomeAccount) {
                 Modifier
@@ -710,7 +722,9 @@ fun HomeScreen(
                         .testTag(HOME_FEED_LIST_TAG),
                     contentPadding = PaddingValues(
                         top = scaffoldPadding.calculateTopPadding() + 8.dp,
-                        bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
+                        // 底栏 + 播放条 + 右下角 FAB 叠放高度，列表最后几条不被挡住、点击不会落到 FAB 上
+                        bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding +
+                            if (showRefreshFab) 144.dp else 72.dp,
                     ),
                     onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                     footer = ProgressIndicatorFooter,
@@ -955,32 +969,35 @@ fun HomeScreen(
                     }
                 }
 
-                if (showRefreshFab) {
-                    if (isDebuggable) {
-                        DraggableRefreshButton(
-                            onClick = {
-                                val data = Json.encodeToString(viewModel.debugData)
-                                paginationEnvironment.setPlainTextClipboard("data", data)
-                                userMessages.showShortMessage("已复制调试数据")
-                            },
-                            preferenceName = "copyAll",
-                            bottomAvoidance = readingPlayerOverlayPadding,
-                        ) {
-                            Icon(Icons.Default.CopyAll, contentDescription = "复制")
-                        }
-                    }
-                    DraggableRefreshButton(
-                        modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
-                        bottomAvoidance = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
-                        stackAboveFab = true,
-                        onClick = { viewModel.refresh(paginationEnvironment) },
-                    ) {
-                        if (viewModel.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                        } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                        }
-                    }
+            }
+        }
+
+        } // end contentSource（列表模糊层）
+
+        if (showRefreshFab) {
+            if (isDebuggable) {
+                DraggableRefreshButton(
+                    onClick = {
+                        val data = Json.encodeToString(viewModel.debugData)
+                        paginationEnvironment.setPlainTextClipboard("data", data)
+                        userMessages.showShortMessage("已复制调试数据")
+                    },
+                    preferenceName = "copyAll",
+                    bottomAvoidance = readingPlayerOverlayPadding,
+                ) {
+                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                }
+            }
+            DraggableRefreshButton(
+                modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
+                bottomAvoidance = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
+                stackAboveFab = true,
+                onClick = { viewModel.refresh(paginationEnvironment) },
+            ) {
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
                 }
             }
         }
@@ -1081,19 +1098,30 @@ fun HomeScreen(
             val createFabOpacity = remember(settings) {
                 settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
             }
-            FloatingActionButton(
-                modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
-                onClick = { showCreateMenu = !showCreateMenu },
-                shape = CircleShape,
-                containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
-                elevation = if (createFabOpacity < 1f) {
-                    FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                } else {
-                    FloatingActionButtonDefaults.elevation()
-                },
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "创作")
+            if (glassProvider != null && glassSource != null) {
+                glassProvider.Fab(
+                    source = glassSource,
+                    onClick = { showCreateMenu = !showCreateMenu },
+                    modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
+                    opacity = createFabOpacity,
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "创作")
+                }
+            } else {
+                FloatingActionButton(
+                    modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
+                    onClick = { showCreateMenu = !showCreateMenu },
+                    shape = CircleShape,
+                    containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
+                    elevation = if (createFabOpacity < 1f) {
+                        FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                    } else {
+                        FloatingActionButtonDefaults.elevation()
+                    },
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "创作")
+                }
             }
         }
     }
