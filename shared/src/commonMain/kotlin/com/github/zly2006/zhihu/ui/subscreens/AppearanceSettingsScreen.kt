@@ -131,6 +131,20 @@ const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
 const val PREF_FAB_OPACITY = "fabOpacity"
+const val APPEARANCE_SETTINGS_RESET_FAB_POSITION_TAG = "appearance_reset_fab_position"
+
+/** 所有可拖动悬浮按钮保存的位置键（DraggableRefreshButton 的 preferenceName） */
+val DRAGGABLE_FAB_PREFERENCE_NAMES = listOf(
+    "fabRefresh", "copyAll", "collectionRandomRefresh", "fabPageTurnComment", "buttonSkipAnswer", "readingPlayerCompact",
+)
+
+/** 清除悬浮按钮拖动位置，下次显示时回到默认位置 */
+fun resetFloatingButtonPositions(settings: com.github.zly2006.zhihu.platform.SettingsStore) {
+    DRAGGABLE_FAB_PREFERENCE_NAMES.forEach { name ->
+        settings.remove("$name-x")
+        settings.remove("$name-y")
+    }
+}
 const val DEFAULT_FAB_OPACITY = 100
 const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
 const val DEFAULT_PAGE_TURN_PERCENT = 90
@@ -620,6 +634,19 @@ fun AppearanceSettingsScreen(
                             steps = 17,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
+                    },
+                )
+
+                var fabPositionResetDone by remember { mutableStateOf(false) }
+                SettingItem(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_RESET_FAB_POSITION_TAG),
+                    title = { Text("重置悬浮按钮位置") },
+                    description = {
+                        Text(if (fabPositionResetDone) "已重置，返回页面后按钮回到默认位置。" else "清除拖动保存的位置，刷新等悬浮按钮回到默认位置。")
+                    },
+                    onClick = {
+                        resetFloatingButtonPositions(settings)
+                        fabPositionResetDone = true
                     },
                 )
 

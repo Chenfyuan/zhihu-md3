@@ -150,6 +150,9 @@ import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.animation.core.Animatable
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
@@ -430,11 +433,29 @@ fun ZhihuMain(
     var currentMainTabDestination by remember { mutableStateOf(startDestination) }
     val isAccountSurface = currentMainTabDestination == Account
 
-    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation && !showDetailPane) {
-        navController.popBackStack()
-    }
-    PlatformBackHandler(enabled = showDetailPane) {
-        detailNavController.popBackStack()
+    // 预测性返回：读取设置「启用预测性返回」（enable_predictive_back，默认开）。
+    // 开启时详情页（问题/回答/搜索结果打开的详情等）跟手缩小+轻微右移，松手后再出栈；关闭时保持普通返回。
+    val predictiveBackEnabled by rememberObservedSetting(settings, "enable_predictive_back") { getBoolean("enable_predictive_back", true) }
+    val detailBackProgress = remember { Animatable(0f) }
+    val detailBackScope = rememberCoroutineScope()
+    val mainDetailBackEnabled = navEntry != null && !showMainNavigation && !showDetailPane
+    if (predictiveBackEnabled) {
+        PlatformPredictiveBackHandler(
+            enabled = mainDetailBackEnabled || showDetailPane,
+            onProgress = { p -> detailBackScope.launch { detailBackProgress.snapTo(p) } },
+            onCancel = { detailBackScope.launch { detailBackProgress.animateTo(0f, tween(180)) } },
+            onBack = {
+                if (showDetailPane) detailNavController.popBackStack() else navController.popBackStack()
+                detailBackScope.launch { detailBackProgress.snapTo(0f) }
+            },
+        )
+    } else {
+        PlatformBackHandler(enabled = mainDetailBackEnabled) {
+            navController.popBackStack()
+        }
+        PlatformBackHandler(enabled = showDetailPane) {
+            detailNavController.popBackStack()
+        }
     }
 
     fun navigateTopLevel(destination: TopLevelDestination) {
@@ -544,9 +565,9 @@ fun ZhihuMain(
             NavHost(
                 navController = detailNavController,
                 startDestination = EmptyDetail,
-                modifier = modifier.testTag("detail_pane"),
+                modifier = modifier.testTag("detail_pane").predictiveBackLayer { detailBackProgress.value },
                 enterTransition = { slideInHorizontally(tween(300)) { it } },
-                exitTransition = { ExitTransition.None },
+                exitTransition = { listExitTransition() },
                 popEnterTransition = { EnterTransition.None },
                 popExitTransition = { slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300)) },
             ) {
@@ -728,7 +749,8 @@ fun ZhihuMain(
                                 } else {
                                     Modifier
                                 }
-                            ).pointerInput(Unit) {
+                            ).predictiveBackLayer { if (mainDetailBackEnabled) detailBackProgress.value else 0f }
+                                .pointerInput(Unit) {
                                 while (true) {
                                     awaitPointerEventScope {
                                         awaitFirstDown(
@@ -754,7 +776,7 @@ fun ZhihuMain(
                                 slideInHorizontally(tween(300)) { it }
                             },
                             exitTransition = {
-                                ExitTransition.None
+                                listExitTransition()
                             },
                             popEnterTransition = {
                                 EnterTransition.None
@@ -1206,5 +1228,23 @@ private fun NavGraphBuilder.accountSettings(
     }
     composable<Account.DeveloperSettings.ColorScheme> {
         ColorSchemeScreen()
+    }
+}
+
+
+/** 列表 → 详情：列表轻微缩小 + 淡出，避免原先 ExitTransition.None 的突兀感。 */
+internal fun listExitTransition(): ExitTransition =
+    fadeOut(tween(durationMillis = 220), targetAlpha = 0.6f) +
+        scaleOut(tween(durationMillis = 300), targetScale = 0.94f)
+
+/** 预测性返回手势进度 0..1 → 页面缩小到 90%、右移、圆角感由缩放体现 */
+internal fun Modifier.predictiveBackLayer(progress: () -> Float): Modifier = graphicsLayer {
+    val p = progress().coerceIn(0f, 1f)
+    if (p > 0f) {
+        val s = 1f - 0.1f * p
+        scaleX = s
+        scaleY = s
+        translationX = size.width * 0.06f * p
+        transformOrigin = TransformOrigin(1f, 0.5f)
     }
 }
