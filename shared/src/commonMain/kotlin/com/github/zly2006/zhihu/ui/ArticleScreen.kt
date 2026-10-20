@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.ui.article.GLASS_ACTION_BUTTON_MARGIN
+import com.github.zly2006.zhihu.ui.article.GlassArticleActionBar
 import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -556,9 +558,8 @@ fun ArticleScreen(
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                     val glassBar = glassProvider != null && actionBarGlassSource != null
                     val navBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
-                    // 玻璃模式下中性胶囊底色改为半透明，选中态（赞/踩/收藏）颜色保持不变
-                    val neutralPill = if (glassBar) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHighest
-                    val neutralChip = MaterialTheme.colorScheme.surfaceContainer.let { if (glassBar) it.copy(alpha = 0.55f) else it }
+                    val neutralPill = MaterialTheme.colorScheme.surfaceContainerHighest
+                    val neutralChip = MaterialTheme.colorScheme.surfaceContainer
 
                     @Composable
                     fun ActionBarContent() {
@@ -567,13 +568,9 @@ fun ArticleScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .then(
-                                        if (glassBar) {
-                                            Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
-                                        } else {
-                                            Modifier.padding(horizontal = 16.dp).padding(bottom = navBottom + 8.dp)
-                                        },
-                                    ).height(36.dp),
+                                    .padding(horizontal = 16.dp)
+                                    .padding(bottom = navBottom + 8.dp)
+                                    .height(36.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Row(
@@ -681,13 +678,9 @@ fun ArticleScreen(
                             // ── duo3：药丸式动画投票与操作区 ────────────────────
                             Row(
                                 modifier = Modifier
-                                    .then(
-                                        if (glassBar) {
-                                            Modifier.padding(horizontal = 6.dp, vertical = 6.dp)
-                                        } else {
-                                            Modifier.padding(bottom = navBottom + 16.dp).padding(horizontal = 16.dp)
-                                        },
-                                    ).fillMaxWidth(),
+                                    .padding(bottom = navBottom + 16.dp)
+                                    .padding(horizontal = 16.dp)
+                                    .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Row(
@@ -841,15 +834,23 @@ fun ArticleScreen(
                                     },
                             ) {
                                 if (glassBar) {
-                                    glassProvider!!.Panel(
+                                    GlassArticleActionBar(
+                                        provider = glassProvider!!,
                                         source = actionBarGlassSource!!,
+                                        voteUpState = viewModel.voteUpState,
+                                        voteUpCount = viewModel.voteUpCount,
+                                        commentCount = viewModel.commentCount,
+                                        isFavorited = viewModel.isFavorited,
+                                        selectedVoteColor = if (useDuo3ArticleActions) voteUpNeutralContentDuo3() else voteUpNeutralContent(),
+                                        onVote = { viewModel.toggleVoteUp(environment, it) },
+                                        onFavorite = { showCollectionDialog = true },
+                                        onComment = { showComments = true },
+                                        onMore = { showActionsMenu = true },
+                                        // 悬浮：底边留出导航栏 + 间距；Scaffold 会把这一整块高度计入正文底部留白
                                         modifier = Modifier
-                                            .padding(horizontal = 12.dp)
-                                            .padding(bottom = navBottom + 10.dp)
+                                            .padding(top = 8.dp, bottom = navBottom + GLASS_ACTION_BUTTON_MARGIN)
                                             .testTag(ARTICLE_GLASS_ACTION_BAR_TAG),
-                                    ) {
-                                        ActionBarContent()
-                                    }
+                                    )
                                 } else {
                                     ActionBarContent()
                                 }

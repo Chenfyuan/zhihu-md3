@@ -46,11 +46,11 @@ interface GlassBottomBarProvider {
     )
 
     /**
-     * 胶囊形玻璃面板（内容页底部操作栏等）。[source] 必须是面板之外、被 [contentSource] 标记的正文层，
-     * 面板自身不在该层内，避免采样到自己。Android 12 以下降级为半透明 surfaceContainer。
+     * 与 [Fab] 同款的玻璃胶囊（宽度随内容，圆形时传正方形尺寸）。用于内容页底部的赞踩/收藏/评论/更多悬浮按钮。
+     * [source] 必须是按钮之外、被 [contentSource] 标记的正文层，避免采样到自己。Android 12 以下降级为半透明 surfaceContainer。
      */
     @Composable
-    fun Panel(
+    fun Capsule(
         source: Any,
         modifier: Modifier,
         content: @Composable () -> Unit,
