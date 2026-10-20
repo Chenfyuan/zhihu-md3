@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.ui.components.LoginRequiredPrompt
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -747,6 +748,7 @@ fun SearchScreen(
                     }
                     item {
                         when {
+                            viewModel.loginRequired -> LoginRequiredPrompt(message = "搜索结果登录后可看")
                             viewModel.errorMessage != null -> {
                                 TextButton(
                                     modifier = Modifier.fillMaxWidth().testTag("search_retry_button"),
@@ -787,7 +789,21 @@ fun SearchScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                         },
-                        footer = ProgressIndicatorFooter,
+                        isEnd = { viewModel.isEnd && !viewModel.loginRequired },
+                        loginRequired = { viewModel.loginRequired },
+                        footer = { state ->
+                            // 其它错误：普通错误信息 + 重试；不再无限转圈。
+                            if (viewModel.errorMessage != null) {
+                                TextButton(
+                                    modifier = Modifier.fillMaxWidth().testTag("search_retry_button"),
+                                    onClick = { viewModel.retry(paginationEnvironment) },
+                                ) {
+                                    Text("加载失败：${viewModel.errorMessage}，点击重试")
+                                }
+                            } else {
+                                ProgressIndicatorFooter(state)
+                            }
+                        },
                         key = SearchEntity::id,
                     ) { result ->
                         when (result) {

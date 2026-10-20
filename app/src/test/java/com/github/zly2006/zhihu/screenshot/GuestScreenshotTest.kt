@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.captureToImage
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -75,11 +76,13 @@ abstract class GuestScreenshotBase(private val suffix: String) {
 
     @Before
     fun offline() {
+        // 同一 JVM 里前面的测试可能已建好真实网络的账号存储，先清掉，保证本测试只走 MockEngine。
+        com.github.zly2006.zhihu.account.replaceAndroidZhihuAccountStoreForTesting(null)
         accountHttpClientEngineForTesting = MockEngine { request ->
-            // 模拟知乎对匿名搜索的真实响应（403 need_login），验证游客降级提示。
+            // 真实抓包：未登录搜索 → 403，code 40353，need_login，并在响应体里给出 /account/unhuman 跳转（不跟随）。
             if ("/search" in request.url.encodedPath) {
                 return@MockEngine respond(
-                    """{"error":{"code":40352,"message":"need_login"}}""",
+                    """{"error":{"code":40353,"message":"请登录后查看","need_login":true,"redirect":"https://www.zhihu.com/account/unhuman?type=unhuman&message=need_login&need_login=true"}}""",
                     HttpStatusCode.Forbidden,
                     headersOf("Content-Type", "application/json"),
                 )
@@ -98,6 +101,7 @@ abstract class GuestScreenshotBase(private val suffix: String) {
     @After
     fun restore() {
         accountHttpClientEngineForTesting = null
+        com.github.zly2006.zhihu.account.replaceAndroidZhihuAccountStoreForTesting(null)
     }
 
     private val tabs = listOf(
@@ -177,7 +181,7 @@ abstract class GuestScreenshotBase(private val suffix: String) {
             ViewModelProvider(
                 compose.activity,
                 viewModelFactory { initializer { SearchViewModel("Material 3", "") } },
-            )[SearchViewModel::class.java].addDisplayItems(sampleItems(""))
+            )[SearchViewModel::class.java] // 不预填数据：让页面真正发起搜索请求，走 403 降级路径
         }
         compose.setContent {
             ZhihuTheme {
@@ -187,6 +191,19 @@ abstract class GuestScreenshotBase(private val suffix: String) {
                 ) { SearchScreen(Search(query = "Material 3")) }
             }
         }
+        // 403 need_login 后应显示「登录后可看」+ 登录按钮，而不是无限转圈。
+        // 网络回调在真实 IO 线程完成，需要推进 Compose 时钟才会重组，所以手动轮询。
+        var shown = false
+        repeat(100) {
+            if (!shown) {
+                Thread.sleep(100)
+                compose.mainClock.advanceTimeBy(200)
+                compose.waitForIdle()
+                shown = compose.onAllNodesWithText("这部分内容登录后可看", useUnmergedTree = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        org.junit.Assert.assertTrue("未登录搜索 403 后应显示「登录后可看」", shown)
         shoot("search")
     }
 

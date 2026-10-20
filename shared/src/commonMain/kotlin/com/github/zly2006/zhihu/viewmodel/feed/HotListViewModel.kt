@@ -21,7 +21,7 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 
-class HotListViewModel : BaseFeedViewModel() {
+open class HotListViewModel : BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50&mobile=true"
 

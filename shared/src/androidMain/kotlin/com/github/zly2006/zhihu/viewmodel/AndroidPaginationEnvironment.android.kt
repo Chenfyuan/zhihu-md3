@@ -226,6 +226,10 @@ open class SharedAndroidPaginationEnvironment(
             if (tryShowLoginExpiredDialog(error)) {
                 return
             }
+            // 401/403（未登录）由页面内的「登录后可看」提示处理，不再弹出原始 JSON 错误对话框和 Toast。
+            if (com.github.zly2006.zhihu.viewmodel.isLoginRequiredError(error)) {
+                return
+            }
             showDebugErrorDialog(error)
         }
         Log.e(tag, "Failed to fetch feeds", error)
