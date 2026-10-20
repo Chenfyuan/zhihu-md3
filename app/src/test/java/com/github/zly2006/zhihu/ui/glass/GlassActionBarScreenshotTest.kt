@@ -106,7 +106,7 @@ abstract class GlassActionBarScreenshotBase(private val suffix: String) {
         append("<p>全文完：最后一段必须能滚到悬浮按钮上方。</p>")
     }
 
-    private fun open(type: ArticleType, duo3: Boolean, vote: VoteUpState, favorited: Boolean, name: String, scrollToEnd: Boolean = false) {
+    private fun open(type: ArticleType, duo3: Boolean, vote: VoteUpState, favorited: Boolean, name: String, scrollToEnd: Boolean = false, midScrollSwipes: Int = 0) {
         val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         androidSettingsStore(ctx).putBoolean("duo3_article_actions", duo3)
         val article = Article(type = type, id = 900L + name.hashCode(), title = "液态玻璃底部操作栏")
@@ -141,6 +141,13 @@ abstract class GlassActionBarScreenshotBase(private val suffix: String) {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         assertTrue("悬浮按钮应离开底边（导航栏+间距）", vote.bottom < root.bottom - 8f)
         assertTrue("更多按钮在右侧", more.left > vote.right)
+        if (midScrollSwipes > 0) {
+            repeat(midScrollSwipes) {
+                compose.onAllNodes(hasScrollAction()).onFirst().performTouchInput { swipeUp() }
+                compose.mainClock.advanceTimeBy(600)
+            }
+            compose.waitForIdle()
+        }
         if (scrollToEnd) {
             repeat(20) {
                 compose.onAllNodes(hasScrollAction()).onFirst().performTouchInput { swipeUp() }
@@ -163,6 +170,9 @@ abstract class GlassActionBarScreenshotBase(private val suffix: String) {
 
     @Test
     fun answerScrolledToEnd() = open(ArticleType.Answer, duo3 = false, vote = VoteUpState.Neutral, favorited = false, name = "answer-end", scrollToEnd = true)
+
+    @Test
+    fun answerMidScroll() = open(ArticleType.Answer, duo3 = false, vote = VoteUpState.Up, favorited = false, name = "answer-mid", midScrollSwipes = 1)
 
     @Test
     fun article() = open(ArticleType.Article, duo3 = false, vote = VoteUpState.Neutral, favorited = false, name = "article")
