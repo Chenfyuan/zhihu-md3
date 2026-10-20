@@ -151,7 +151,7 @@ object ZhihuMockApi {
         )
         mockJson(
             method = HttpMethod.Get,
-            url = "https://redenmc.com/api/zhihu/releases/latest",
+            url = com.github.zly2006.zhihu.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL,
             body =
                 """
                 {

@@ -79,7 +79,6 @@ import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
@@ -108,7 +107,6 @@ class MainActivity : ComponentActivity() {
 
     /** 主返回栈控制器，承载 MainTabs 主壳和单栏页面。 */
     lateinit var navController: NavHostController
-    private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private val pageTurnDispatcher = PageTurnDispatcher()
     private var currentMainTabOpenFrom: String? = null
     var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
@@ -143,7 +141,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdgeCompat()
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
-        continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
@@ -269,11 +266,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        continuousUsageReminderManager.onAppForeground()
     }
 
     override fun onStop() {
-        continuousUsageReminderManager.onAppBackground()
         super.onStop()
     }
 
@@ -530,7 +525,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        continuousUsageReminderManager.onDestroy()
         super.onDestroy()
     }
 

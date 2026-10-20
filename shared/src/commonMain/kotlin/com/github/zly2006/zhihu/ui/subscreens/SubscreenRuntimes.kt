@@ -84,7 +84,6 @@ expect val isApkUpdateInstallSupported: Boolean
 data class DeveloperInfoSnapshot(
     val networkStatus: String = "网络状态：未知",
     val powerSaveModeText: String? = null,
-    val continuousUsageDurationMs: Long = 0L,
 )
 
 @Composable

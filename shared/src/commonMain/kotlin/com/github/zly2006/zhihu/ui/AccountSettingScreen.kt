@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.updater.NO_RELEASE_INFO_MESSAGE
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -377,7 +378,12 @@ fun AccountSettingScreen(
                     userMessages.showShortMessage("发现新$versionType ${state.version}")
                 }
                 if (updateState is SystemUpdateState.Error) {
-                    userMessages.showLongMessage("检查更新失败: ${(updateState as SystemUpdateState.Error).message}")
+                    val message = (updateState as SystemUpdateState.Error).message
+                    if (message == NO_RELEASE_INFO_MESSAGE) {
+                        userMessages.showShortMessage(NO_RELEASE_INFO_MESSAGE)
+                    } else {
+                        userMessages.showLongMessage("检查更新失败: $message")
+                    }
                 }
             }
 
@@ -415,10 +421,10 @@ fun AccountSettingScreen(
                 )
                 SettingItem(
                     title = { Text("GitHub 项目地址") },
-                    description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
+                    description = { Text("https://github.com/Chenfyuan/zhihu-md3") },
                     icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
                     onClick = {
-                        openSystemUrl("https://github.com/zly2006/zhihu-plus-plus")
+                        openSystemUrl("https://github.com/Chenfyuan/zhihu-md3")
                     },
                     endAction = {
                         Icon(

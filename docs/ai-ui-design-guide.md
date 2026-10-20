@@ -123,7 +123,6 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `githubToken` | GitHub Token | 更新检查 API 限速 | 不要打印或提交真实 token |
 | `checkNightlyUpdates` | Nightly 更新 | 是否检查每日构建 | Android updater 和 Desktop runtime 都读 |
 | `allowTelemetry` | 遥测统计 | 匿名使用统计 | 不影响核心功能 |
-| `continuousUsageReminderIntervalMinutes` | 防沉迷提醒 | 连续使用提醒间隔 | 0 表示关闭 |
 | `developer` | 开发者模式 | 账号页显示开发者选项 | 账号页点击版本 5 次开启 |
 | `enableScrollEndHaptic` | 开发者选项: 滚动到底震动 | 滚动边界反馈行为开关 | 改前查具体 overScroll 使用点 |
 | `showDebugOverlay` | 开发者选项: 调试悬浮窗 | 调试 Feed 详情显示 | 如果 `rg` 只命中设置页，先补运行时读取点 |

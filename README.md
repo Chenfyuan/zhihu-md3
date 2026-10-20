@@ -1,6 +1,6 @@
 # Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
 
-[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/releases)
+[![GitHub release](https://img.shields.io/github/v/release/Chenfyuan/zhihu-md3)](https://github.com/Chenfyuan/zhihu-md3/releases)
 
 本项目还不够完善，欢迎PR。
 
@@ -32,9 +32,8 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 
 告别知乎 110MB+ 的 Android 客户端，Lite APK 只要不到 4 MB！
 
-[点我下载](https://github.com/zly2006/zhihu-plus-plus/releases)
+[点我下载](https://github.com/Chenfyuan/zhihu-md3/releases)
 
-[下载最新开发版本](https://github.com/zly2006/zhihu-plus-plus/releases/tag/nightly)
 
 桌面版提供 Windows MSI 安装包与 Linux AppImage（均内置 Java 运行时，下载安装即可使用，无需另外安装 Java），macOS 提供 arm64 原生应用。
 
@@ -104,7 +103,6 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
   - 支持 Deep Link 与剪贴板链接识别跳转
   - 支持二维码扫码结果展示和复制，可用于提取网址、Wi-Fi 密码等信息
   - 主界面支持横滑切换标签页
-  - 防沉迷提醒
   - 支持自定义初始页面
   - 双击操作快速 **点赞** 或 **打开评论区**
   - 点击底部导航栏回到顶部/刷新
