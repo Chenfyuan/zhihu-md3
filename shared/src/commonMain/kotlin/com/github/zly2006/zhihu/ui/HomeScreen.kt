@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.ui.components.GlassHomeTopBar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -493,6 +494,8 @@ fun HomeScreen(
 
     val glassProvider = LocalGlassBottomBarProvider.current
     val glassSource = LocalGlassBarSource.current
+    // 顶部搜索胶囊 + 通知圆钮的独立模糊源：只标记列表层，顶栏自身在层外，避免采样到自己
+    val topGlassSource = glassProvider?.rememberSource()
     Box(modifier = Modifier.fillMaxSize()) {
         // 模糊层只包列表；刷新/+ 在层外，与玻璃底栏共用 glassBarSource
         Box(
@@ -516,6 +519,19 @@ fun HomeScreen(
             },
             topBar = {
                 if (!showTopActions) {
+                    return@Scaffold
+                }
+                if (glassProvider != null && topGlassSource != null) {
+                    GlassHomeTopBar(
+                        provider = glassProvider,
+                        source = topGlassSource,
+                        // duo3 布局整页不避让状态栏，这里自己留；旧版 Scaffold 已统一 pad 掉状态栏
+                        topInset = if (duo3HomeAccount) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() else 0.dp,
+                        searchHint = if (duo3HomeAccount) "搜索" else "搜索内容",
+                        onSearch = { navigator.onNavigate(Search(query = "")) },
+                        unreadCount = if (showUnreadBadge) unreadCount else 0,
+                        onNotification = { navigator.onNavigate(Notification) },
+                    )
                     return@Scaffold
                 }
                 if (duo3HomeAccount) {
@@ -703,6 +719,13 @@ fun HomeScreen(
                 }
             }
 
+            Box(
+                if (glassProvider != null && topGlassSource != null) {
+                    glassProvider.contentSource(Modifier.fillMaxSize(), topGlassSource)
+                } else {
+                    Modifier.fillMaxSize()
+                },
+            ) {
             FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
                 PaginatedList(
                     items = viewModel.displayItems,
@@ -958,6 +981,7 @@ fun HomeScreen(
                     }
                 }
 
+            }
             }
         }
 
