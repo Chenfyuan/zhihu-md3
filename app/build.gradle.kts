@@ -235,6 +235,9 @@ dependencies {
     // Navigation (JetBrains KMP version)
     //noinspection GradleDependency
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
+    // 液态玻璃底栏（与清瓣同款，Kyant0/AndroidLiquidGlass）
+    implementation("io.github.kyant0:backdrop:2.0.1")
+    implementation("io.github.kyant0:shapes:1.2.1")
 
     implementation("androidx.webkit:webkit:1.16.0")
     implementation("androidx.activity:activity-compose:1.13.0")

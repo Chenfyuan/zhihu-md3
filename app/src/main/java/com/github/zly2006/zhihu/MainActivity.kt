@@ -194,7 +194,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             navController = rememberNavController()
             ZhihuTheme {
-                CompositionLocalProvider(LocalPageTurnDispatcher provides pageTurnDispatcher) {
+                CompositionLocalProvider(
+                    LocalPageTurnDispatcher provides pageTurnDispatcher,
+                    com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider provides
+                        com.github.zly2006.zhihu.ui.glass.AndroidGlassBottomBarProvider,
+                ) {
                     Box(Modifier.semantics { testTagsAsResourceId = true }) {
                         AndroidZhihuMain(navController = navController)
                         PageTurnFab(dispatcher = pageTurnDispatcher)

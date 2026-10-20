@@ -66,6 +66,8 @@ import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import com.github.zly2006.zhihu.ui.components.GlassBarTab
+import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
@@ -588,6 +590,8 @@ fun ZhihuMain(
                 detailNavController.navigate(directReadingDestination)
             }
         }
+        val glassBarProvider = LocalGlassBottomBarProvider.current
+        val glassBarSource = glassBarProvider?.rememberSource()
         if (showListDetail || !showDetailPane) {
             paneStateHolder.SaveableStateProvider("list") {
                 Scaffold(
@@ -606,7 +610,37 @@ fun ZhihuMain(
                                 enter = slideInVertically(tween(200)) { it },
                                 exit = slideOutVertically(tween(200)) { it },
                             ) {
-                                NavigationBar(
+                                fun onBottomItemClick(destination: TopLevelDestination, selected: Boolean) {
+                                    isReadingPlayerExpandedByUser = false
+                                    if (!selected) {
+                                        navigateTopLevel(destination)
+                                    } else if (tapToScrollToTopEnabled) {
+                                        scrollToTopTrigger++
+                                    }
+                                }
+                                if (glassBarProvider != null && glassBarSource != null) {
+                                    val selectedIndex = bottomBarItems.indexOfFirst { item ->
+                                        currentBottomDestination?.let { it::class == item.destination::class } == true
+                                    }
+                                    glassBarProvider.Bar(
+                                        source = glassBarSource,
+                                        tabs = bottomBarItems.map { item ->
+                                            GlassBarTab(
+                                                label = item.label,
+                                                selectedIcon = item.selectedIcon,
+                                                unselectedIcon = item.unselectedIcon,
+                                                testTag = "nav_tab_${item.destination.name.lowercase()}",
+                                            )
+                                        },
+                                        selectedIndex = selectedIndex,
+                                        onSelect = { index ->
+                                            bottomBarItems.getOrNull(index)?.let { item ->
+                                                onBottomItemClick(item.destination, index == selectedIndex)
+                                            }
+                                        },
+                                        modifier = Modifier,
+                                    )
+                                } else NavigationBar(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     modifier = Modifier.height(
                                         64.dp + bottomPadding,
@@ -688,7 +722,13 @@ fun ZhihuMain(
                     ) {
                         NavHost(
                             navController,
-                            modifier = Modifier.pointerInput(Unit) {
+                            modifier = (
+                                if (glassBarProvider != null && glassBarSource != null) {
+                                    glassBarProvider.contentSource(Modifier, glassBarSource)
+                                } else {
+                                    Modifier
+                                }
+                            ).pointerInput(Unit) {
                                 while (true) {
                                     awaitPointerEventScope {
                                         awaitFirstDown(
@@ -901,7 +941,8 @@ fun ZhihuMain(
                     bottom = bottomPadding + 16.dp + if (
                         !showDetailPane && showMainNavigation && showMainNavigationBar && (!autoHideBottomBar || isBottomBarVisible)
                     ) {
-                        64.dp
+                        // 玻璃底栏多出上下外边距（8dp + 14dp）
+                        if (glassBarProvider != null) 86.dp else 64.dp
                     } else {
                         0.dp
                     },
