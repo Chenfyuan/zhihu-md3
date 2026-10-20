@@ -269,6 +269,7 @@ dependencies {
     testImplementation(platform("androidx.compose:compose-bom:2026.06.00"))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("androidx.test.ext:junit:1.3.0")
+    testImplementation("io.ktor:ktor-client-mock:$ktor")
     testImplementation("io.ktor:ktor-client-cio:$ktor")
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktor")
     testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
