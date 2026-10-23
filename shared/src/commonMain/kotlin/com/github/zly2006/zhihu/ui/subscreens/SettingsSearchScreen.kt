@@ -49,7 +49,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -263,7 +262,7 @@ private val settingsSearchEntries = buildList {
 
     add(systemEntry("system.githubToken", "GitHub Token", "配置更新检查时使用的 GitHub API 令牌。", "githubToken", listOf("限速", "更新检查", "令牌")))
     add(systemEntry("system.checkNightlyUpdates", "检查 Nightly 版本更新", "检查每日构建版本。", "checkNightlyUpdates", listOf("每日构建")))
-    add(systemEntry("system.aigcMarking", "启用 AIGC 标记", "开启后可查看其他用户对内容是否疑似 AIGC 的标记。", AIGC_MARKING_ENABLED_PREFERENCE_KEY, listOf("AI", "AIGC")))
+    add(systemEntry("system.crashLogs", "崩溃日志", "查看、分享或清除本机保存的崩溃记录。", "crashLogs", listOf("崩溃", "日志", "闪退", "crash")))
     if (platformName == "macOS") {
         add(
             systemEntry(

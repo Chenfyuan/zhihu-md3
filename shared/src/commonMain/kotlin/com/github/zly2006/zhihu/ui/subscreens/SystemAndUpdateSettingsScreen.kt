@@ -68,7 +68,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
@@ -81,7 +81,7 @@ import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import kotlinx.coroutines.launch
 
 internal const val MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY = "macosQuitOnWindowClose"
-const val SYSTEM_SETTINGS_AIGC_MARKING_TAG = "system_settings_aigc_marking"
+const val SYSTEM_SETTINGS_CRASH_LOGS_TAG = "system_settings_crash_logs"
 
 /**
  * 系统、更新和外部服务设置页。
@@ -368,23 +368,12 @@ fun SystemAndUpdateSettingsScreen(
                     highlightedKey = highlightedSetting,
                 )
 
-                var aigcMarkingEnabled by remember {
-                    mutableStateOf(settings.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false))
-                }
-                SettingItemWithSwitch(
-                    modifier = Modifier.testTag(SYSTEM_SETTINGS_AIGC_MARKING_TAG),
-                    title = { Text("启用 AIGC 标记") },
-                    description = {
-                        Text(
-                            "如果启用，会把你正在浏览的内容发送到我们的服务器，这样你可以知道其他用户是否认为其疑似 AIGC。默认关闭，不会发送隐私信息。",
-                        )
-                    },
-                    checked = aigcMarkingEnabled,
-                    onCheckedChange = {
-                        aigcMarkingEnabled = it
-                        settings.putBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, it)
-                    },
-                    settingKey = AIGC_MARKING_ENABLED_PREFERENCE_KEY,
+                SettingItem(
+                    modifier = Modifier.testTag(SYSTEM_SETTINGS_CRASH_LOGS_TAG),
+                    title = { Text("崩溃日志") },
+                    description = { Text("查看、分享或清除本机保存的崩溃记录。只存在手机里，不会上传。") },
+                    onClick = { navigator.onNavigate(Account.CrashLogs) },
+                    settingKey = "crashLogs",
                     highlightedKey = highlightedSetting,
                 )
             }

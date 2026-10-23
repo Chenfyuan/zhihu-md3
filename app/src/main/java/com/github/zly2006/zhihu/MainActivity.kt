@@ -79,6 +79,7 @@ import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.util.CrashReporter
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
@@ -113,8 +114,10 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        Thread.setDefaultUncaughtExceptionHandler { _, e ->
+        Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             Log.e(TAG, "Uncaught exception", e)
+            // 仅写入应用私有目录，不联网；可在 系统与更新 → 崩溃日志 查看/分享/清除
+            CrashReporter.recordCrash(applicationContext, thread, e)
             val intent = Intent(
                 Intent.ACTION_VIEW,
                 Uri

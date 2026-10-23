@@ -31,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FilterCenterFocus
-import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.DesktopWindows
@@ -43,24 +42,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.articleActionText
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.ShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
-import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.launch
 
 private val VoteUpNeutralContent = Color(0xFF3671EE)
@@ -89,7 +83,6 @@ fun ArticleActionsMenu(
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
-    onAigcFlagRequest: () -> Unit,
     onExportRequest: () -> Unit,
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
@@ -180,16 +173,6 @@ fun ArticleActionsMenu(
             onClick = {
                 onDismissRequest()
                 onSummaryRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-        MenuActionButton(
-            icon = Icons.Filled.Flag,
-            text = "标记疑似 AIGC",
-            onClick = {
-                onDismissRequest()
-                onAigcFlagRequest()
             },
         )
 

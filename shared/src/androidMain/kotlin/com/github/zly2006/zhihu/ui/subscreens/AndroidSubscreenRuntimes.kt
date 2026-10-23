@@ -18,6 +18,8 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import android.content.Context
+import com.github.zly2006.zhihu.util.CrashReporter
+import java.io.File
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.compose.runtime.Composable
@@ -169,4 +171,27 @@ actual fun rememberOpenSourceLicensesLibraries(): Libs {
             .withContext(context)
             .build()
     }
+}
+
+private class AndroidCrashLogStore(
+    private val context: Context,
+) : CrashLogStore {
+    private fun file(entry: CrashLogEntry): File = File(CrashReporter.crashLogDir(context), entry.id)
+
+    override fun list(): List<CrashLogEntry> = CrashReporter.logs(context).map { file ->
+        val title = runCatching { file.useLines { it.firstOrNull() } }.getOrNull()?.removePrefix("时间: ") ?: file.name
+        CrashLogEntry(id = file.name, title = title, sizeBytes = file.length())
+    }
+
+    override fun read(entry: CrashLogEntry): String = runCatching { file(entry).readText() }.getOrDefault("")
+
+    override fun share(entry: CrashLogEntry): Boolean = CrashReporter.share(context, file(entry))
+
+    override fun clear(): Int = CrashReporter.clear(context)
+}
+
+@Composable
+actual fun rememberCrashLogStore(): CrashLogStore {
+    val context = LocalContext.current.applicationContext
+    return remember(context) { AndroidCrashLogStore(context) }
 }

@@ -227,3 +227,6 @@ private fun loadDesktopAboutLibrariesJson(): String? {
     }
 }
 
+
+@Composable
+actual fun rememberCrashLogStore(): CrashLogStore = EmptyCrashLogStore

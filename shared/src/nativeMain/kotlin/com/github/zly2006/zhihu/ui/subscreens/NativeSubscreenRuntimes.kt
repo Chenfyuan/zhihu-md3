@@ -209,3 +209,6 @@ private fun loadNativeAboutLibrariesJson(): String? {
 @Composable
 actual fun rememberShowFullVariantLicenses(): Boolean = false
 
+
+@Composable
+actual fun rememberCrashLogStore(): CrashLogStore = EmptyCrashLogStore

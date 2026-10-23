@@ -155,6 +155,9 @@ data object Account : TopLevelDestination {
     data object OpenSourceLicenses : NavDestination
 
     @Serializable
+    data object CrashLogs : NavDestination
+
+    @Serializable
     data object DeveloperSettings : NavDestination {
         @Serializable
         data object ColorScheme : NavDestination

@@ -20,8 +20,6 @@ package com.github.zly2006.zhihu.ui
 import com.github.zly2006.zhihu.ui.article.GLASS_ACTION_BUTTON_MARGIN
 import com.github.zly2006.zhihu.ui.article.GlassArticleActionBar
 import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -74,7 +72,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -89,7 +86,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -102,7 +98,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
@@ -121,7 +116,6 @@ import com.github.zly2006.zhihu.platform.isArticleImageExportSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
 import com.github.zly2006.zhihu.ui.article.ArticleSummarySheet
 import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
@@ -241,7 +235,6 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
-    var showAigcFlagSheet by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
@@ -279,7 +272,6 @@ fun ArticleScreen(
         !showCollectionDialog &&
         !showActionsMenu &&
         !showSummaryDialog &&
-        !showAigcFlagSheet &&
         !showExportDialog &&
         !showDoubleTapActionDialog &&
         !showVoters
@@ -348,9 +340,6 @@ fun ArticleScreen(
 
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
-            viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValue)
-            viewModel.syncAigcReadEventIfEligible(environment)
-
             if (viewModel.rememberedScrollYSync) {
                 viewModel.rememberedScrollY = currentScroll
             }
@@ -367,24 +356,8 @@ fun ArticleScreen(
         answerNavigationState.prepareArticle()
         viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
-        viewModel.loadAigcFlagStatus(environment)
     }
 
-    LaunchedEffect(article.type, article.id, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
-            delay(15_000)
-            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
-            viewModel.syncAigcReadEventIfEligible(environment)
-        }
-    }
-    LaunchedEffect(scrollState, viewModel.content) {
-        snapshotFlow { effectiveScrollMaxValue }.collectLatest { maxValue ->
-            if (viewModel.content.isNotBlank()) {
-                viewModel.updateAigcReadProgress(scrollState.value, maxValue)
-            }
-        }
-    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -776,7 +749,7 @@ fun ArticleScreen(
                                 ArticleType.Article -> "文章"
                             }
                             val hasVotersSocialCredit = viewModel.votersTotal > 0
-                            if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
+                            if (!hasVotersSocialCredit) return
                             Spacer(modifier = Modifier.height(8.dp))
                             if (hasVotersSocialCredit) {
                                 val text = viewModel.votersSocialText.ifBlank {
@@ -797,16 +770,6 @@ fun ArticleScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = votersTextModifier,
-                                )
-                            }
-                            if (viewModel.aigcSupportVoterCount > 0) {
-                                if (hasVotersSocialCredit) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                }
-                                Text(
-                                    text = "有 ${formatCompactCount(viewModel.aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
                                 )
                             }
                         }
@@ -837,7 +800,7 @@ fun ArticleScreen(
                                 Spacer(Modifier.height(12.dp))
                             }
                             val hasPinnedDate = pinAnswerDate
-                            val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
+                            val hasSocialCredit = viewModel.votersTotal > 0
                             val endorsements = viewModel.endorsements
                             val hasEndorsements = endorsements.isNotEmpty()
                             if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
@@ -1023,10 +986,6 @@ fun ArticleScreen(
             showSummaryDialog = true
             viewModel.requestAiSummary(environment)
         },
-        onAigcFlagRequest = {
-            showAigcFlagSheet = true
-            viewModel.loadAigcFlagStatus(environment)
-        },
         onExportRequest = { showExportDialog = true },
         onSetImmersiveDoubleTap = {
             showActionsMenu = false
@@ -1073,13 +1032,6 @@ fun ArticleScreen(
     PlatformBackHandler(showActionsMenu) {
         showActionsMenu = false
     }
-
-    AigcFlagSheet(
-        showDialog = showAigcFlagSheet,
-        viewModel = viewModel,
-        onDismissRequest = { showAigcFlagSheet = false },
-        onSubmitRequest = { viewModel.submitAigcFlag(environment) },
-    )
 
     // 使用新的收藏夹对话框组件
     CollectionDialogComponent(

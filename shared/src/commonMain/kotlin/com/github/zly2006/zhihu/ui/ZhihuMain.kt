@@ -170,6 +170,7 @@ import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementScreen
+import com.github.zly2006.zhihu.ui.subscreens.CrashLogsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
@@ -1092,6 +1093,7 @@ private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
     is Account.SystemAndUpdateSettings,
     Account.SettingsSearch,
     Account.OpenSourceLicenses,
+    Account.CrashLogs,
     Account.DeveloperSettings,
     Account.DeveloperSettings.ColorScheme,
     -> true
@@ -1152,6 +1154,9 @@ private fun NavGraphBuilder.accountSettings(
     }
     composable<Account.OpenSourceLicenses> {
         OpenSourceLicensesScreen()
+    }
+    composable<Account.CrashLogs> {
+        CrashLogsScreen()
     }
     composable<Account.DeveloperSettings> {
         DeveloperSettingsScreen()

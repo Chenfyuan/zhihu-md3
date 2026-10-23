@@ -29,7 +29,6 @@ expect val isJvm: Boolean
 
 expect val isNative: Boolean
 
-expect val isAigcVoteSupported: Boolean
 
 expect val isLiteVariant: Boolean
 
