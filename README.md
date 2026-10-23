@@ -1,136 +1,95 @@
-# Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
+# zhihu-md3
 
 [![GitHub release](https://img.shields.io/github/v/release/Chenfyuan/zhihu-md3)](https://github.com/Chenfyuan/zhihu-md3/releases)
 
-本项目还不够完善，欢迎PR。
+一个无广告、注重隐私的第三方知乎客户端，以 Android 为主。
 
-Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为您提供和筛选高质量内容。
-本地推荐算法完全独立于知乎算法，依赖爬虫运行，可以自由定制各种推荐权重，保证看到自己想看的内容。
-我相信，这点绵薄之力可以帮助广大用户从大公司的手中夺回本该属于我们的权利——选择自己的生活，不被算法奴役的权利。
+本项目是 [zly2006/zhihu-plus-plus（Zhihu++）](https://github.com/zly2006/zhihu-plus-plus) 的分支，绝大部分功能和底层实现来自原项目，感谢原作者 zly2006 及所有贡献者。本项目沿用原项目的 [AGPL-3.0](LICENSE) 许可证，源码文件中的原作者版权声明均保留。
 
-知乎客户端，Android 为主，并提供实验性桌面版。去广告，去推广软文，去推销带货，去盐选专栏。
+本应用不由知乎官方开发或运营，也未得到知乎的认可或支持。
 
-支持手机端/网页端/混合等多种推荐方案。
+## 和原项目的区别
 
-可以设置屏蔽词、AI屏蔽回答、屏蔽用户、屏蔽话题，也支持搜索筛选、沉浸式阅读、AIGC 标记和内容创作。
+- **界面**：按 Material 3 重新设计，底部导航栏、顶部搜索栏和部分操作按钮改为液态玻璃效果，主页、关注、热榜、账号几个页面的底栏效果保持一致。
+- **去掉了所有连向原作者服务器的功能**：
+  - 使用统计（遥测）
+  - 首页在线通知
+  - 崩溃日志上传
+  - AIGC 标记投票
+- **崩溃日志只存在本机**：闪退时在应用私有目录写一份日志，最多保留 10 份，每份不超过 256 KB，不联网。可以在「设置 → 系统与更新 → 崩溃日志」里查看、通过系统分享面板发出去，或者全部清除。
+- **检查更新**：从本仓库 [Chenfyuan/zhihu-md3](https://github.com/Chenfyuan/zhihu-md3) 的 GitHub Releases 获取版本。
+- **包名**：Android 包名为 `com.sjtech.zhihu`（Full 版为 `com.sjtech.zhihu.full`），可以和原版 Zhihu++ 同时安装，两者的登录状态和设置不互通。
 
 ## 应用截图
 
-| 首页 | 关注 | 日报 | 个人主页 | 文章 |
+| 首页 | 热榜 | 回答 | 账号 | 崩溃日志 |
 | --- | --- | --- | --- | --- |
-| ![首页截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/1_home.jpg) | ![关注截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/2_follow.jpg) | ![日报截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/3_daily.jpg) | ![个人主页截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/4_people.jpg) | ![文章截图](fastlane/metadata/android/zh-CN/images/phoneScreenshots/5_article.jpg) |
+| ![首页](docs/screenshots/home.png) | ![热榜](docs/screenshots/hotlist.png) | ![回答](docs/screenshots/answer.png) | ![账号](docs/screenshots/account.png) | ![崩溃日志](docs/screenshots/crash-logs.png) |
 
-<div style="  display: flex; flex-flow: column; max-width: 520px; margin: auto; align-items: center" align="center">
-  <img height="320" alt="知乎++在老年机上都能流畅运行" src="https://github.com/user-attachments/assets/e85e899c-d899-4309-8382-2a2aee25a1f9" />
-  <div>
-    知乎++在老年机上都能流畅运行 photo by @zeky
-  </div>
-</div>
-
+截图来自自动化 UI 测试，内容为示例数据。
 
 ## 下载
 
-告别知乎 110MB+ 的 Android 客户端，Lite APK 只要不到 4 MB！
+暂未发布。发布后会放在本仓库的 GitHub Releases 页面。
 
-[点我下载](https://github.com/Chenfyuan/zhihu-md3/releases)
+Android 有两个版本：
 
+- **Lite**：体积约 4.5 MB，不含端侧 AI 模型，推荐大多数人使用。
+- **Full**：多带一个 ONNX 推理框架，支持基于 embedding 的智能内容过滤（NLP 屏蔽词），体积更大。
 
-桌面版提供 Windows MSI 安装包与 Linux AppImage（均内置 Java 运行时，下载安装即可使用，无需另外安装 Java），macOS 提供 arm64 原生应用。
+仓库里也保留了原项目的桌面端（Windows / Linux / macOS）代码，目前没有在本分支单独维护和发布。
 
-> 关于Full和Lite两个版本的说明：
-> Full版本包含了一个onnx框架，可以在端侧进行离线AI推理，支持基于LLM embedding的智能内容过滤功能，
-> 这实际上主要是本人对端侧AI的技术尝试，实际功能还有很多没开发的，比如人本地知识库（懒）；
-> Lite版本不支持智能内容过滤，但体积更小，性能更好。您可以根据自己的需求选择下载哪个版本。
+## 主要功能
 
-## 路线图
+以下功能沿用自原项目：
 
-### 已经实现的功能
+- **登录**：手机验证码登录、扫码登录、手动设置 Cookie
+- **信息流**：首页推荐支持网页 / 安卓 / 本地 / 混合模式，可以在登录和未登录推荐之间切换；关注、热榜、知乎日报、搜索（热搜、历史、排序与筛选）
+- **过滤与屏蔽**：屏蔽词（支持正则）、屏蔽用户、屏蔽话题、屏蔽盐选付费内容、质量过滤、屏蔽记录，屏蔽词可以导入导出；NLP 屏蔽词仅 Full 版可用
+- **阅读**：回答、文章、问题、想法、收藏夹、个人主页；沉浸式阅读、回答间手势切换、AI 总结、LaTeX 公式、划线高亮、无水印保存图片、动图与多图查看、应用内播放视频
+- **导出**：单篇内容导出为 PDF / 图片 / Markdown / HTML，也可以导出整个收藏夹
+- **创作与互动**：写回答（Markdown 编辑、预览、插图、草稿）、评论区、通知、赞同者列表、关注和拉黑用户、经典表情
+- **其他**：Deep Link 与剪贴板链接识别、扫码、横滑切换标签页、自定义初始页面、双击点赞或打开评论区
 
-- 登录与账号
-  - 支持手机验证码登录
-  - 支持通过扫码在电脑端登录
-  - 支持手动设置 Cookie 登录
-- 信息流与推荐
-  - 首页推荐支持 Web / 安卓 / 本地 / 混合模式
-  - 支持切换 **登录状态 / 非登录状态** 下的推荐，防止信息茧房
-  - 支持关注页（推荐/动态，可显示动态来源说明）、热榜、知乎日报、搜索（含热搜、历史、排序/类型/时间筛选）
-  - 支持智能内容过滤、质量过滤、反向屏蔽、过滤统计与屏蔽记录
-  - **支持屏蔽知乎盐选付费内容**
-- 内容浏览
-  - 阅读回答
-  - 阅读文章
-  - 浏览问题详情页（排序、关注、日志、分享、评论）
-  - 浏览想法（Pin）详情页（点赞、评论、分享、话题、投票）
-  - 浏览收藏夹及收藏夹内容
-  - 在用户主页内搜索 TA 的创作
-  - 历史记录（在线历史 + 本地历史，支持删除）
-  - 展示知乎官方认证徽章
-  - 应用内播放知乎视频
-- 阅读
-  - 回答页长按保存图片 **无水印**
-  - 回答切换手势（上下/左右切换）与”下一个回答”按钮
-  - 沉浸式阅读，可隐藏回答区干扰元素
-  - AI 总结内容
-  - **导出内容**（PDF / 图片 / Markdown / HTML）
-  - **支持导出整个收藏夹**
-  - 内容划线高亮
-  - 图片查看器支持动图（GIF）与多图滑动切换
-  - 数学公式渲染（LaTeX，字体动态下载）
-  - 支持调节正文段间距
-  - 可拖动滚动条、上划/下划自动隐藏/显示操作按钮
-- 内容创作
-  - Android 端支持写回答、编辑已有回答、保存草稿和发布回答
-  - 写回答支持 Markdown 编辑、预览和插入图片
-- 社区互动
-  - 支持查看个人主页（含关注订阅板块）、关注/拉黑用户、屏蔽推荐
-  - 支持查看回答赞同者列表，以及关注的人赞同
-  - 评论区（含子评论、回复、点赞、按时间排序）
-  - 通知（支持分类、红点设置、全部标记已读、自动标记已读与通知筛选）
-  - 可记名标记疑似 AIGC 内容，并查看有效标记和投票人
-  - 表情包
-    - 经典表情`[惊喜]` <img src="misc/emojis/emoji_1114211280118018048.png" height="18" style="diSplay:inline"> 强势回归！
-- 屏蔽系统
-  - 屏蔽词（支持正则表达式）
-  - NLP 屏蔽词（基于 LLM embedding 和向量相似度匹配，仅 full 版本可用）
-  - 屏蔽用户（含评论、问题回答等场景）
-  - 屏蔽话题（含想法流）
-  - **导出屏蔽词** & **导入屏蔽词**（支持跨设备迁移）
-  - 屏蔽历史记录
-- 其他
-  - 基于 Kotlin Multiplatform 共享核心代码，支持 Android 与实验性桌面端
-  - 支持 zse96 v2 签名算法（可以调用 99% 的网页端 API）
-  - 支持模拟安卓端 API 调用
-  - 支持 Deep Link 与剪贴板链接识别跳转
-  - 支持二维码扫码结果展示和复制，可用于提取网址、Wi-Fi 密码等信息
-  - 主界面支持横滑切换标签页
-  - 支持自定义初始页面
-  - 双击操作快速 **点赞** 或 **打开评论区**
-  - 点击底部导航栏回到顶部/刷新
+## 隐私
 
-### 遥测
+本应用不收集使用数据，也不会把你的浏览内容发到第三方服务器。网络请求只发往知乎，以及以下几处：
 
-若您同意（可以在设置关闭），本应用会收集一些匿名的数据，用来统计使用量。您可以随时拒绝遥测，这不影响任何功能的使用。我们收集的数据如下：
+- GitHub：检查更新
+- 公开的镜像站：首次显示公式时下载数学字体
 
-- 应用启动次数
-- 应用启动时间
-- 您的IP地址
-- 经过SHA256匿名化后的知乎账号ID（如果您登录了的话）
+崩溃日志只保存在手机里，除非你自己分享出去。
 
-除此之外，我们不会收集任何其他数据，包括但不限于您的浏览记录、推荐算法的输入输出、屏蔽词列表等。
+## 自行构建
 
-### See Also
+需要 JDK 17 和 Android SDK：
 
-如果对其他知乎客户端感兴趣，这些客户端都不需要你root即可使用，也欢迎尝试：
+```bash
+./gradlew :app:assembleLiteDebug      # Lite 调试包
+./gradlew :app:assembleLiteRelease    # Lite 正式包（R8 混淆）
+```
 
+Full 版需要单独执行一次 Gradle（Full 和 Lite 不能在同一次调用里构建），并且依赖 Rust 工具链来编译 `sentence_embeddings`。
+
+正式包签名通过环境变量读取：
+
+- `signingKey`：keystore 文件的 Base64
+- `keyStorePassword`
+- `keyAlias`
+- `keyPassword`
+
+不设置的话，正式包不会签名。keystore 和密码请放在仓库之外，不要提交到 Git。
+
+## 相关项目
+
+其他不需要 root 的第三方知乎客户端，与本项目无关：
+
+- [Zhihu++](https://github.com/zly2006/zhihu-plus-plus)（本项目的上游）
 - [Hydrogen](https://github.com/zhihulite/Hydrogen)
-- [Zhihu--](https://github.com/huamurui/zhihu-minus-minus) （极早期开发阶段，功能尚有欠缺）
-- [Zhihu++ swift版（iOS）](https://github.com/kangyun1994/zhihu-plus-plus-swift)
-- [Zhihu++ HMOS （鸿蒙版）](https://github.com/zhuoyi233/zhihu-plus-plus-HMOS)
+- [Zhihu--](https://github.com/huamurui/zhihu-minus-minus)
+- [Zhihu++ Swift 版（iOS）](https://github.com/kangyun1994/zhihu-plus-plus-swift)
+- [Zhihu++ HMOS（鸿蒙版）](https://github.com/zhuoyi233/zhihu-plus-plus-HMOS)
 
-注意：这里的所有项目与知乎++无关，在此列出不代表其实得到了知乎++的支持或背书。
+## 许可证
 
-## 贡献者
-
-感谢所有为 Zhihu++ 做出贡献的开发者与用户，正是你们让这个项目持续变得更好。
-
-[![Contributors](https://ghcontrib.pages.dev/image?repo=zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/graphs/contributors)
+[AGPL-3.0](LICENSE)。本项目基于 Zhihu++（Copyright © 2024-2026 zly2006）修改。
