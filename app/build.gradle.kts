@@ -53,7 +53,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.github.zly2006.zhplus"
+        applicationId = "com.sjtech.zhihu"
         minSdk = 27
         targetSdk = 35
         versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
@@ -67,12 +67,12 @@ android {
         create("full") {
             dimension = "version"
             buildConfigField("boolean", "IS_LITE", "false")
+            applicationIdSuffix = ".full"
         }
         create("lite") {
             dimension = "version"
             isDefault = true
             buildConfigField("boolean", "IS_LITE", "true")
-            applicationIdSuffix = ".lite"
 //            versionNameSuffix = "-lite"
         }
     }

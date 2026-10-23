@@ -263,8 +263,8 @@ Compose 页面需要在进入前台时刷新数据，应优先让协程直接跟
 - **Module**: `sentence_embeddings`（Rust tokenizer，仅 full variant）
 
 ### Build Variants
-- **lite**: 轻量版 (~4MB)，无 ML 功能，包名 `com.github.zly2006.zhplus.lite`
-- **full**: 完整版，含 HanLP NLP，包名 `com.github.zly2006.zhplus`
+- **lite**: 轻量版 (~4MB)，无 ML 功能，包名 `com.sjtech.zhihu`
+- **full**: 完整版，含 HanLP NLP，包名 `com.sjtech.zhihu.full`
 
 ## 关键约定
 
@@ -328,7 +328,7 @@ Compose 页面需要在进入前台时刷新数据，应优先让协程直接跟
 ```bash
 # 检查包名（必须先做）
 grep "applicationId" app/build.gradle.kts
-# lite variant: com.github.zly2006.zhplus.lite
+# lite variant: com.sjtech.zhihu
 ```
 
 远端路径（选择 `off` 时）：
@@ -360,8 +360,8 @@ emulator -avd Medium_Phone_2
 ./gradlew assembleLiteDebug
 adb install -r app/build/outputs/apk/lite/debug/app-lite-debug.apk
 
-adb shell am force-stop com.github.zly2006.zhplus.lite
-adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
+adb shell am force-stop com.sjtech.zhihu
+adb shell monkey -p com.sjtech.zhihu -c android.intent.category.LAUNCHER 1
 ```
 
 ### UI 调试强制清单

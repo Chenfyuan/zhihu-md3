@@ -37,6 +37,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+// 知乎收藏夹描述里的标记；兼容旧包名创建的收藏夹，避免重复新建。
+private const val OPEN_IN_BROWSER_COLLECTION_MARKER = "com.sjtech.zhihu.openinbrowser"
+private const val LEGACY_OPEN_IN_BROWSER_COLLECTION_MARKER = "com.github.zly2006.zhplus.openinbrowser"
+
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false
@@ -44,7 +48,7 @@ object OpenInBrowser {
         val jojo = environment.fetchJson("https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=50", "")!!
         val collection = ZhihuJson
             .decodeJson<List<Collection>>(jojo["data"]!!)
-            .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
+            .firstOrNull { it.description == OPEN_IN_BROWSER_COLLECTION_MARKER || it.description == LEGACY_OPEN_IN_BROWSER_COLLECTION_MARKER }
             ?: ZhihuJson.decodeJson<Collection>(
                 environment
                     .postSigned("https://www.zhihu.com/api/v4/collections") {
@@ -52,7 +56,7 @@ object OpenInBrowser {
                         setBody(
                             buildJsonObject {
                                 put("title", "Zhihu++: 要在浏览器中打开的内容")
-                                put("description", "com.github.zly2006.zhplus.openinbrowser")
+                                put("description", OPEN_IN_BROWSER_COLLECTION_MARKER)
                                 put("is_public", false)
                             },
                         )

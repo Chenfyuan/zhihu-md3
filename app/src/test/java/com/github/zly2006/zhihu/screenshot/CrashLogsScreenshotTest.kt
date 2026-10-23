@@ -40,7 +40,7 @@ private class FakeCrashLogStore : CrashLogStore {
         """
         时间: ${entry.title}
         应用版本: 0.30.3 (750)
-        包名: com.github.zly2006.zhplus.lite
+        包名: com.sjtech.zhihu
         设备: Google Pixel 8
         Android: 15 (API 35)
         线程: main
