@@ -55,22 +55,6 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 @Composable
-actual fun rememberArticleTtsState(): TtsState = DesktopArticleSpeechController.currentTtsState
-
-@Composable
-actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
-    val userMessages = rememberUserMessageSink()
-    val coroutineScope = rememberCoroutineScope()
-    return remember(userMessages, coroutineScope) {
-        object : ArticleSpeechToggler {
-            override fun invoke(title: String, content: String) {
-                DesktopArticleSpeechController.toggleSpeech(title, content, coroutineScope, userMessages)
-            }
-        }
-    }
-}
-
-@Composable
 actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
@@ -83,78 +67,6 @@ actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
         }
     }
 }
-
-private object DesktopArticleSpeechController {
-    private var speechProcess: Process? = null
-    var currentTtsState by mutableStateOf(
-        if (isDesktopSpeechCommandAvailable()) TtsState.Ready else TtsState.Error,
-    )
-        private set
-
-    fun toggleSpeech(
-        title: String,
-        content: String,
-        coroutineScope: kotlinx.coroutines.CoroutineScope,
-        userMessages: UserMessageSink,
-    ) {
-        if (currentTtsState.isSpeaking) {
-            stopSpeaking()
-        } else if (currentTtsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-            coroutineScope.launch {
-                try {
-                    val textToRead = withContext(Dispatchers.IO) {
-                        articleSpeechText(title, content)
-                    }
-                    if (textToRead.isNotBlank()) {
-                        speakText(textToRead, title, userMessages)
-                    }
-                } catch (e: Exception) {
-                    currentTtsState = TtsState.Error
-                    userMessages.showMessage("朗读失败：${e.message}")
-                }
-            }
-        }
-    }
-
-    private suspend fun speakText(
-        text: String,
-        title: String,
-        userMessages: UserMessageSink,
-    ) {
-        currentTtsState = TtsState.LoadingText
-        val process = withContext(Dispatchers.IO) {
-            ProcessBuilder("say")
-                .redirectErrorStream(true)
-                .start()
-        }
-        speechProcess = process
-        currentTtsState = TtsState.Speaking
-        userMessages.showMessage("开始朗读：$title")
-        val exitCode = withContext(Dispatchers.IO) {
-            process.outputStream.bufferedWriter().use { writer ->
-                writer.write(text)
-            }
-            process.waitFor()
-        }
-        if (speechProcess == process) {
-            speechProcess = null
-            currentTtsState = if (exitCode == 0) TtsState.Ready else TtsState.Error
-        }
-    }
-
-    private fun stopSpeaking() {
-        speechProcess?.destroy()
-        speechProcess = null
-        currentTtsState = TtsState.Ready
-    }
-}
-
-private fun isDesktopSpeechCommandAvailable(): Boolean =
-    runCatching {
-        ProcessBuilder("sh", "-c", "command -v say >/dev/null 2>&1")
-            .start()
-            .waitFor() == 0
-    }.getOrDefault(false)
 
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
@@ -306,28 +218,7 @@ actual fun rememberAppVersionInfo(): String = desktopVersionName()
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = null
 
-@Composable
-actual fun ArticleWebViewContent(
-    article: Article,
-    html: String,
-    title: String,
-    scrollState: ScrollState,
-    rememberedScrollY: Int,
-    rememberedScrollYSync: Boolean,
-    onRememberedScrollYSyncChange: (Boolean) -> Unit,
-    onImageLoadFailed: () -> Unit,
-    onDoubleTap: () -> Unit,
-): Unit = error("$platformName 暂不支持文章 WebView 渲染")
-
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
-
-/**
- * 桌面端不支持 WebView
- */
-@Composable
-actual fun ZhihuHtmlWebViewContent(html: String): Unit = error("$platformName 暂不支持 HTML WebView 渲染")
-
-actual val isLegacyWebViewSupported: Boolean = false
 
 @Composable
 actual fun rememberNotificationEnvironment(
@@ -336,14 +227,6 @@ actual fun rememberNotificationEnvironment(
     DesktopPaginationEnvironment(
         notificationSettingsStore = settingsStore,
     )
-}
-
-@Composable
-actual fun QuestionDetailWebViewContent(
-    questionId: Long,
-    html: String,
-) {
-    error("$platformName 暂不支持问题详情 WebView 渲染")
 }
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this

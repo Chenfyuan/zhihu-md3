@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -80,7 +81,6 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
@@ -165,7 +165,8 @@ private fun FollowScreenContent(
         viewModel.selectedTabIndex = pagerState.currentPage
     }
 
-    Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+    // 底部留白交给列表 contentPadding：列表要能滚到悬浮玻璃底栏下面，不能整块裁在底栏上方
+    Column {
         FollowTabRow(
             pagerState = pagerState,
             selectedTabIndex = pagerState.currentPage,
@@ -196,11 +197,13 @@ private fun FollowScreenContent(
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
+                    bottomPadding = innerPadding.calculateBottomPadding(),
                     isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 0),
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
+                    bottomPadding = innerPadding.calculateBottomPadding(),
                     isActive = isFollowPageTurnTargetActive(isActive, pagerState.currentPage, 1),
                 )
             }
@@ -346,15 +349,9 @@ fun FollowingUsersRow() {
 fun FollowRecommendScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: Dp = 0.dp,
 ) {
     val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
-    val readingQueueSourceId = "follow:recommend"
-    if (isActive) {
-        RegisterReadingQueueSource(
-            sourceId = readingQueueSourceId,
-            items = viewModel.displayItems,
-        )
-    }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
@@ -403,6 +400,7 @@ fun FollowRecommendScreen(
                 modifier = Modifier
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -413,7 +411,6 @@ fun FollowRecommendScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
                     menuItems = { dismissMenu ->
                         DropdownMenuItem(
@@ -500,15 +497,9 @@ fun FollowRecommendScreen(
 fun FollowDynamicScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: Dp = 0.dp,
 ) {
     val viewModel: FollowViewModel = viewModel { FollowViewModel() }
-    val readingQueueSourceId = "follow:dynamic"
-    if (isActive) {
-        RegisterReadingQueueSource(
-            sourceId = readingQueueSourceId,
-            items = viewModel.displayItems,
-        )
-    }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
@@ -557,6 +548,7 @@ fun FollowDynamicScreen(
                 modifier = Modifier
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 onLoadMore = { viewModel.loadMore(environment) },
                 topContent = {
                     item {
@@ -567,7 +559,6 @@ fun FollowDynamicScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     modifier = Modifier.testTag("follow_dynamic_item_${item.stableKey}"),
                     showSourceLabel = true,
                     menuItems = { dismissMenu ->

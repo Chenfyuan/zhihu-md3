@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu.test
 
 import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
 import com.github.zly2006.zhihu.account.replaceAndroidZhihuAccountStoreForTesting
-import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -144,14 +143,9 @@ object ZhihuMockApi {
                 }
                 """.trimIndent(),
         )
-        mockJsonPrefix(
-            method = HttpMethod.Get,
-            urlPrefix = "$ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL?version=",
-            body = """{"notifications":[]}""",
-        )
         mockJson(
             method = HttpMethod.Get,
-            url = "https://redenmc.com/api/zhihu/releases/latest",
+            url = com.github.zly2006.zhihu.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL,
             body =
                 """
                 {

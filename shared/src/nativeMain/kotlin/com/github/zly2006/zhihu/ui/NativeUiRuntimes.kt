@@ -64,42 +64,6 @@ import platform.Foundation.dataUsingEncoding
 import org.jetbrains.skia.Image as SkiaImage
 
 @Composable
-actual fun rememberArticleTtsState(): TtsState = NativeArticleSpeechController.currentState
-
-@Composable
-actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
-    val userMessages = rememberUserMessageSink()
-    val coroutineScope = rememberCoroutineScope()
-    val ttsState = NativeArticleSpeechController.currentState
-    return remember(userMessages, coroutineScope, ttsState) {
-        object : ArticleSpeechToggler {
-            override fun invoke(title: String, content: String) {
-                if (ttsState.isSpeaking) {
-                    NativeArticleSpeechController.stopSpeaking()
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    coroutineScope.launch {
-                        try {
-                            val textToRead = withContext(Dispatchers.Default) {
-                                articleSpeechText(title, content)
-                            }
-                            if (textToRead.isNotBlank()) {
-                                if (NativeArticleSpeechController.startSpeaking(textToRead)) {
-                                    userMessages.showMessage("开始朗读：$title")
-                                } else {
-                                    userMessages.showMessage("朗读启动失败")
-                                }
-                            }
-                        } catch (e: Exception) {
-                            userMessages.showMessage("朗读失败：${e.message}")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
     val openExternalUrl = rememberExternalUrlOpener()
     return remember(openExternalUrl) {
@@ -116,19 +80,6 @@ actual fun rememberNotificationEnvironment(
 
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = null
-
-@Composable
-actual fun ArticleWebViewContent(
-    article: Article,
-    html: String,
-    title: String,
-    scrollState: ScrollState,
-    rememberedScrollY: Int,
-    rememberedScrollYSync: Boolean,
-    onRememberedScrollYSyncChange: (Boolean) -> Unit,
-    onImageLoadFailed: () -> Unit,
-    onDoubleTap: () -> Unit,
-): Unit = error("$platformName 暂不支持文章 WebView 渲染")
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
 
@@ -199,11 +150,6 @@ actual fun rememberHomeIsDebuggable(): Boolean = nativeIsDesktop
 
 @Composable
 actual fun rememberAppVersionInfo(): String = nativeAppVersionName
-
-@Composable
-actual fun ZhihuHtmlWebViewContent(html: String): Unit = error("$platformName 暂不支持 HTML WebView 渲染")
-
-actual val isLegacyWebViewSupported: Boolean = false
 
 @Composable
 actual fun rememberBlocklistRuleImporter(
@@ -277,10 +223,6 @@ actual fun rememberBlocklistRuleExporter(): BlocklistRuleExporter {
         }
     }
 }
-
-@Composable
-actual fun QuestionDetailWebViewContent(questionId: Long, html: String): Unit =
-    error("$platformName 暂不支持问题详情 WebView 渲染")
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this
 

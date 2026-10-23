@@ -149,9 +149,6 @@ import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.platform.rememberImageSaver
 import com.github.zly2006.zhihu.platform.rememberImageSharer
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.reading.ReadingCommentOrder
-import com.github.zly2006.zhihu.reading.loadReadingPreferences
-import com.github.zly2006.zhihu.reading.saveReadingPreferences
 import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.pageTurnContentEndMarker
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
@@ -204,6 +201,8 @@ enum class CommentImageMenuAction {
     Save,
     Share,
 }
+
+private const val COMMENT_SORT_ORDER_PREFERENCE_KEY = "commentSortOrder"
 
 @Composable
 fun SwipeToReplyContainer(
@@ -450,9 +449,13 @@ fun CommentScreen(
     showPageTurnFab: Boolean = false,
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val readingSettings = rememberSettingsStore()
-    val initialReadingCommentOrder = remember(readingSettings) {
-        loadReadingPreferences(readingSettings).commentOrder
+    val commentSettings = rememberSettingsStore()
+    val initialCommentSortOrder = remember(commentSettings) {
+        if (commentSettings.getStringOrNull(COMMENT_SORT_ORDER_PREFERENCE_KEY) == "time") {
+            CommentSortOrder.TIME
+        } else {
+            CommentSortOrder.SCORE
+        }
     }
     val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
@@ -510,10 +513,7 @@ fun CommentScreen(
 
         else -> viewModel(key = viewModelKey) {
             RootCommentViewModel(resolvedContent, initialCommentId).apply {
-                sortOrder = when (initialReadingCommentOrder) {
-                    ReadingCommentOrder.Score -> CommentSortOrder.SCORE
-                    ReadingCommentOrder.Time -> CommentSortOrder.TIME
-                }
+                sortOrder = initialCommentSortOrder
             }
         }
     }
@@ -699,6 +699,14 @@ fun CommentScreen(
                             }
                         }
 
+                        viewModel.loginRequired && viewModel.allData.isEmpty() -> {
+                            com.github.zly2006.zhihu.ui.components.LoginRequiredPrompt(message = "评论登录后可看")
+                        }
+                        viewModel.rateLimited && viewModel.allData.isEmpty() -> {
+                            com.github.zly2006.zhihu.ui.components.RateLimitedPrompt(
+                                onRetry = { viewModel.loadMore(paginationEnvironment) },
+                            )
+                        }
                         viewModel.errorMessage != null && viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)
@@ -899,12 +907,7 @@ fun CommentScreen(
                                                 },
                                                 onClick = {
                                                     viewModel.changeSortOrder(CommentSortOrder.SCORE, paginationEnvironment)
-                                                    saveReadingPreferences(
-                                                        readingSettings,
-                                                        loadReadingPreferences(readingSettings).copy(
-                                                            commentOrder = ReadingCommentOrder.Score,
-                                                        ),
-                                                    )
+                                                    commentSettings.putString(COMMENT_SORT_ORDER_PREFERENCE_KEY, "score")
                                                 },
                                             )
                                             Spacer(Modifier.width(12.dp))
@@ -927,12 +930,7 @@ fun CommentScreen(
                                                 },
                                                 onClick = {
                                                     viewModel.changeSortOrder(CommentSortOrder.TIME, paginationEnvironment)
-                                                    saveReadingPreferences(
-                                                        readingSettings,
-                                                        loadReadingPreferences(readingSettings).copy(
-                                                            commentOrder = ReadingCommentOrder.Time,
-                                                        ),
-                                                    )
+                                                    commentSettings.putString(COMMENT_SORT_ORDER_PREFERENCE_KEY, "time")
                                                 },
                                             )
                                         }

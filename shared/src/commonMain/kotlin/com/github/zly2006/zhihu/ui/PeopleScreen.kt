@@ -103,7 +103,6 @@ import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
-import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PageTurnTarget
@@ -669,32 +668,6 @@ fun PeopleScreen(
         initialPage = peopleScreenInitialPage(person),
         pageCount = { PEOPLE_SCREEN_TITLES.size },
     )
-    val readingQueueSourceId = when (pagerState.currentPage) {
-        0 -> "people:${person.userTokenOrId}:answers:${viewModel.answersFeedModel.sortBy}"
-        1 -> "people:${person.userTokenOrId}:articles:${viewModel.articlesFeedModel.sortBy}"
-        2 -> "people:${person.userTokenOrId}:activities:${viewModel.activitiesFeedModel.sort}"
-        5 -> "people:${person.userTokenOrId}:pins"
-        else -> null
-    }
-    when (pagerState.currentPage) {
-        0 -> RegisterReadingQueueSource(
-            sourceId = requireNotNull(readingQueueSourceId),
-            items = viewModel.answersFeedModel.allData.map(DataHolder.Answer::toPeopleAnswerDisplayItem),
-        )
-        1 -> RegisterReadingQueueSource(
-            sourceId = requireNotNull(readingQueueSourceId),
-            items = viewModel.articlesFeedModel.allData.map(DataHolder.Article::toPeopleArticleDisplayItem),
-        )
-        2 -> RegisterReadingQueueSource(
-            sourceId = requireNotNull(readingQueueSourceId),
-            items = viewModel.activitiesFeedModel.displayItems,
-        )
-        5 -> RegisterReadingQueueSource(
-            sourceId = requireNotNull(readingQueueSourceId),
-            items = viewModel.pinsFeedModel.allData.mapNotNull(DataHolder.Pin::toPeoplePinDisplayItem),
-        )
-    }
-
     LaunchedEffect(viewModel) {
         try {
             viewModel.load(paginationEnvironment)
@@ -894,6 +867,7 @@ fun PeopleScreen(
                                 listState = listState,
                                 onLoadMore = { viewModel.answersFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.answersFeedModel.isEnd },
+                                loginRequired = { viewModel.answersFeedModel.loginRequired },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -903,7 +877,6 @@ fun PeopleScreen(
                             ) {
                                 FeedCard(
                                     it.toPeopleAnswerDisplayItem(),
-                                    readingQueueSourceId = readingQueueSourceId,
                                     modifier = Modifier.testTag("people_screen_answer_item_${it.id}"),
                                     horizontalPadding = 4.dp,
                                 ) { _, destination ->
@@ -931,6 +904,7 @@ fun PeopleScreen(
                                 listState = listState,
                                 onLoadMore = { viewModel.articlesFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.articlesFeedModel.isEnd },
+                                loginRequired = { viewModel.articlesFeedModel.loginRequired },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -940,7 +914,6 @@ fun PeopleScreen(
                             ) {
                                 FeedCard(
                                     it.toPeopleArticleDisplayItem(),
-                                    readingQueueSourceId = readingQueueSourceId,
                                     modifier = Modifier.testTag("people_screen_article_item_${it.id}"),
                                     horizontalPadding = 4.dp,
                                 ) { _, destination ->
@@ -957,6 +930,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.activitiesFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.activitiesFeedModel.isEnd },
+                            loginRequired = { viewModel.activitiesFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -965,7 +939,6 @@ fun PeopleScreen(
                         ) {
                             FeedCard(
                                 it,
-                                readingQueueSourceId = readingQueueSourceId,
                                 modifier = Modifier.testTag("people_screen_activity_item_${it.stableKey}"),
                                 horizontalPadding = 4.dp,
                             )
@@ -979,6 +952,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.collectionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.collectionsFeedModel.isEnd },
+                            loginRequired = { viewModel.collectionsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1000,6 +974,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.questionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.questionsFeedModel.isEnd },
+                            loginRequired = { viewModel.questionsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1021,6 +996,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.pinsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.pinsFeedModel.isEnd },
+                            loginRequired = { viewModel.pinsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1031,7 +1007,6 @@ fun PeopleScreen(
                             PinListItem(
                                 pin = pin,
                                 itemTag = "people_screen_pin_item_${pin.id}",
-                                readingQueueSourceId = readingQueueSourceId,
                             )
                         }
                     }
@@ -1043,6 +1018,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.columnsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.columnsFeedModel.isEnd },
+                            loginRequired = { viewModel.columnsFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1064,6 +1040,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.followersFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followersFeedModel.isEnd },
+                            loginRequired = { viewModel.followersFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1086,6 +1063,7 @@ fun PeopleScreen(
                             listState = listState,
                             onLoadMore = { viewModel.followingFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followingFeedModel.isEnd },
+                            loginRequired = { viewModel.followingFeedModel.loginRequired },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1174,6 +1152,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(0) },
                 isEnd = { viewModel.followingColumnsFeedModel.isEnd },
+                loginRequired = { viewModel.followingColumnsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1192,6 +1171,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(1) },
                 isEnd = { viewModel.followingTopicsFeedModel.isEnd },
+                loginRequired = { viewModel.followingTopicsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1207,6 +1187,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(2) },
                 isEnd = { viewModel.followingQuestionsFeedModel.isEnd },
+                loginRequired = { viewModel.followingQuestionsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1222,6 +1203,7 @@ private fun FollowingSubscriptionsPage(
                 listState = listState,
                 onLoadMore = { onLoadMore(3) },
                 isEnd = { viewModel.followingCollectionsFeedModel.isEnd },
+                loginRequired = { viewModel.followingCollectionsFeedModel.loginRequired },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1296,7 +1278,6 @@ private fun QuestionListItem(
 private fun PinListItem(
     pin: DataHolder.Pin,
     itemTag: String? = null,
-    readingQueueSourceId: String? = null,
 ) {
     val navigator = LocalNavigator.current
     Column(
@@ -1308,7 +1289,6 @@ private fun PinListItem(
                     Pin(
                         id = pin.id.toLong(),
                         authorName = pin.author.name,
-                        readingQueueSourceId = readingQueueSourceId,
                     ),
                 )
             }.padding(vertical = 8.dp, horizontal = 4.dp),

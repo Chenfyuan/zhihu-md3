@@ -108,7 +108,6 @@ import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
-import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -173,7 +172,6 @@ private suspend fun loadQuestion(
 fun QuestionScreen(
     question: Question,
 ) {
-    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val settings = rememberSettingsStore()
     val executeShareAction = rememberShareActionExecutor()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
@@ -181,11 +179,6 @@ fun QuestionScreen(
     val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
-    val answerReadingQueueSourceId = "question:${question.questionId}:answers:${viewModel.sortOrder}"
-    RegisterReadingQueueSource(
-        sourceId = answerReadingQueueSourceId,
-        items = viewModel.displayItems,
-    )
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = sharedArticleAnswerSwitchState
     val listState = rememberLazyListState()
@@ -238,7 +231,13 @@ fun QuestionScreen(
                 userMessages.showShortMessage("获取问题详情失败")
             }
         } catch (e: Exception) {
-            userMessages.showShortMessage("加载失败: ${e.message}")
+            if (com.github.zly2006.zhihu.viewmodel.isLoginRequiredError(e)) {
+                userMessages.showShortMessage("问题详情登录后可看")
+            } else if (com.github.zly2006.zhihu.viewmodel.isRateLimitedError(e)) {
+                userMessages.showShortMessage("请求被限制，稍后重试")
+            } else {
+                userMessages.showShortMessage("加载失败: ${e.message}")
+            }
         }
     }
 
@@ -273,13 +272,15 @@ fun QuestionScreen(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
+                loginRequired = { viewModel.loginRequired },
+                rateLimited = { viewModel.rateLimited },
                 key = { it.stableKey },
                 listState = listState,
                 modifier = Modifier
                     .padding(innerPadding)
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag(QUESTION_SCREEN_LIST_TAG),
-                contentPadding = PaddingValues(bottom = readingPlayerOverlayPadding),
+                contentPadding = PaddingValues(bottom = 0.dp),
                 footer = ProgressIndicatorFooter,
                 topContent = {
                     item {
@@ -336,7 +337,6 @@ fun QuestionScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    readingQueueSourceId = answerReadingQueueSourceId,
                     modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
                 ) { _, destination ->
                     answerSwitchState.pendingNavigator = viewModel.createAnswerNavigatorFor(item, paginationEnvironment)

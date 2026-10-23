@@ -18,33 +18,17 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import android.content.Context
+import com.github.zly2006.zhihu.util.CrashReporter
+import java.io.File
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
-import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.util.withContext
@@ -53,15 +37,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import java.io.File
 
 @Composable
 actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
     val context = LocalContext.current
-    val ttsState = rememberArticleTtsState()
-    return produceState(initialValue = DeveloperInfoSnapshot(), context, ttsState) {
+    return produceState(initialValue = DeveloperInfoSnapshot(), context) {
         while (true) {
-            val readingState = AndroidReadingPlayerBridge.state.value
             value = DeveloperInfoSnapshot(
                 networkStatus = context.networkStatusText(),
                 powerSaveModeText =
@@ -70,10 +51,6 @@ actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot {
                         PowerSaveModeCompat.HUAWEI_POWER_SAVE -> "省电模式：华为傻逼模式已开启"
                         else -> null
                     },
-                continuousUsageDurationMs = ContinuousUsageReminderManager.currentElapsedForegroundMs(),
-                ttsState = ttsState,
-                currentTtsEngineLabel = readingState.engineLabel.ifBlank { "按需初始化" },
-                availableTtsEngineLabels = readingState.availableEngineLabels,
             )
             delay(1_000L)
         }
@@ -95,61 +72,6 @@ private fun Context.networkStatusText(): String {
             }
         } else {
             append("未连接")
-        }
-    }
-}
-
-actual val isWebViewCustomFontSupported: Boolean = true
-
-@Composable
-actual fun WebViewCustomFontSettings(
-    customFontName: String?,
-    onCustomFontNameChange: (String?) -> Unit,
-) {
-    val context = LocalContext.current
-    val userMessages = androidUserMessageSink(context)
-    val fontFilePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val name = uri.lastPathSegment?.substringAfterLast('/') ?: uri.toString()
-        val destFile = File(context.filesDir, "custom_font")
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            destFile.outputStream().use { output -> input.copyTo(output) }
-        }
-        onCustomFontNameChange(name)
-        userMessages.showShortMessage("字体已设置，重新打开文章后生效")
-    }
-    Column(
-        modifier = Modifier,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(top = 8.dp),
-        ) {
-            OutlinedButton(
-                onClick = {
-                    fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
-                },
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(Icons.Default.FolderOpen, contentDescription = null)
-                Text("选择", modifier = Modifier.padding(start = 4.dp))
-            }
-            if (customFontName != null) {
-                OutlinedButton(
-                    onClick = {
-                        File(context.filesDir, "custom_font").delete()
-                        onCustomFontNameChange(null)
-                        userMessages.showShortMessage("已清除自定义字体")
-                    },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.Clear, contentDescription = null)
-                    Text("清除", modifier = Modifier.padding(start = 4.dp))
-                }
-            }
         }
     }
 }
@@ -249,4 +171,27 @@ actual fun rememberOpenSourceLicensesLibraries(): Libs {
             .withContext(context)
             .build()
     }
+}
+
+private class AndroidCrashLogStore(
+    private val context: Context,
+) : CrashLogStore {
+    private fun file(entry: CrashLogEntry): File = File(CrashReporter.crashLogDir(context), entry.id)
+
+    override fun list(): List<CrashLogEntry> = CrashReporter.logs(context).map { file ->
+        val title = runCatching { file.useLines { it.firstOrNull() } }.getOrNull()?.removePrefix("时间: ") ?: file.name
+        CrashLogEntry(id = file.name, title = title, sizeBytes = file.length())
+    }
+
+    override fun read(entry: CrashLogEntry): String = runCatching { file(entry).readText() }.getOrDefault("")
+
+    override fun share(entry: CrashLogEntry): Boolean = CrashReporter.share(context, file(entry))
+
+    override fun clear(): Int = CrashReporter.clear(context)
+}
+
+@Composable
+actual fun rememberCrashLogStore(): CrashLogStore {
+    val context = LocalContext.current.applicationContext
+    return remember(context) { AndroidCrashLogStore(context) }
 }

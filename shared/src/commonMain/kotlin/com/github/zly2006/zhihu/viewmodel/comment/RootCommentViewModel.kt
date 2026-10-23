@@ -46,7 +46,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-class RootCommentViewModel(
+open class RootCommentViewModel(
     content: NavDestination,
     private val initialCommentId: String? = null,
 ) : BaseCommentViewModel(content) {

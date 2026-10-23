@@ -68,7 +68,6 @@ import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.reading.ContentReadingService
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidArticleNavigationHandoff
@@ -80,7 +79,7 @@ import com.github.zly2006.zhihu.ui.components.PageTurnFab
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.ui.subscreens.PREF_VOLUME_KEY_PAGE_TURN
 import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
+import com.github.zly2006.zhihu.util.CrashReporter
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
@@ -88,7 +87,6 @@ import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
-import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -109,7 +107,6 @@ class MainActivity : ComponentActivity() {
 
     /** 主返回栈控制器，承载 MainTabs 主壳和单栏页面。 */
     lateinit var navController: NavHostController
-    private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private val pageTurnDispatcher = PageTurnDispatcher()
     private var currentMainTabOpenFrom: String? = null
     var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
@@ -117,8 +114,10 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        Thread.setDefaultUncaughtExceptionHandler { _, e ->
+        Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             Log.e(TAG, "Uncaught exception", e)
+            // 仅写入应用私有目录，不联网；可在 系统与更新 → 崩溃日志 查看/分享/清除
+            CrashReporter.recordCrash(applicationContext, thread, e)
             val intent = Intent(
                 Intent.ACTION_VIEW,
                 Uri
@@ -144,7 +143,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdgeCompat()
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
-        continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
@@ -194,7 +192,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             navController = rememberNavController()
             ZhihuTheme {
-                CompositionLocalProvider(LocalPageTurnDispatcher provides pageTurnDispatcher) {
+                CompositionLocalProvider(
+                    LocalPageTurnDispatcher provides pageTurnDispatcher,
+                    com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider provides
+                        com.github.zly2006.zhihu.ui.glass.AndroidGlassBottomBarProvider,
+                ) {
                     Box(Modifier.semantics { testTagsAsResourceId = true }) {
                         AndroidZhihuMain(navController = navController)
                         PageTurnFab(dispatcher = pageTurnDispatcher)
@@ -203,7 +205,6 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (savedInstanceState == null) {
-            telemetry(this, "start")
             if (intent.data != null) {
                 if (intent.data!!.authority == "zhihu-plus.internal") {
                     if (intent.data!!.path == "/error") {
@@ -266,11 +267,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        continuousUsageReminderManager.onAppForeground()
     }
 
     override fun onStop() {
-        continuousUsageReminderManager.onAppBackground()
         super.onStop()
     }
 
@@ -360,13 +359,10 @@ class MainActivity : ComponentActivity() {
     private fun handleIntentData(incomingIntent: Intent): Boolean {
         val data = incomingIntent.data ?: return false
         if (data.authority == "zhihu-plus.internal") return true
-        val forceNavigation = incomingIntent.getBooleanExtra(ContentReadingService.READING_NOTIFICATION_INTENT_EXTRA, false)
-        incomingIntent.removeExtra(ContentReadingService.READING_NOTIFICATION_INTENT_EXTRA)
-
         Log.i(TAG, "Intent data: $data")
         val destination = resolveContent(data.toString())
         if (destination != null) {
-            if (forceNavigation || destination != AndroidArticleNavigationHandoff.clipboardDestination) {
+            if (destination != AndroidArticleNavigationHandoff.clipboardDestination) {
                 AndroidArticleNavigationHandoff.markClipboardDestination(destination)
                 navigate(destination, popup = true)
             }
@@ -530,7 +526,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        continuousUsageReminderManager.onDestroy()
         super.onDestroy()
     }
 

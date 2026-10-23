@@ -18,8 +18,6 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
@@ -93,11 +91,6 @@
                 android:name=".QRCodeScanActivity"
                 android:exported="false"
                 android:theme="@style/Theme.Zhihu"/>
-
-        <service
-                android:name="com.github.zly2006.zhihu.reading.ContentReadingService"
-                android:exported="false"
-                android:foregroundServiceType="mediaPlayback"/>
 
         <provider
                 android:name="androidx.core.content.FileProvider"

@@ -72,7 +72,6 @@ class HomeNotificationPixelInstrumentedTest {
                 """.trimIndent(),
         )
         composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
-            putBoolean("duo3_home_account", false)
             putBoolean("showRefreshFab", false)
         }
         composeRule.setScreenContent {

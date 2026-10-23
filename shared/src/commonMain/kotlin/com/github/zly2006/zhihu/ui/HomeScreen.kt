@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
+import com.github.zly2006.zhihu.ui.components.GlassHomeTopBar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -27,7 +29,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -49,7 +50,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.CopyAll
@@ -73,6 +73,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -81,14 +82,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -98,7 +98,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.MOBILE_NOTIFICATION_MESSAGE_URL
@@ -108,49 +107,34 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.filter.RemoteHistorySync
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.navigation.requestLoginNavigation
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ANSWER
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ARTICLE
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_URL
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_SET_SETTING
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS
-import com.github.zly2006.zhihu.notification.OnlineHomeNotification
-import com.github.zly2006.zhihu.notification.OnlineHomeNotificationRepository
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberAppPrivateDirectory
-import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.platform.rememberWebViewUrlOpener
-import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
+import com.github.zly2006.zhihu.ui.components.LocalGlassBarSource
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
-import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.feedKeywordExtractionAvailable
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
-import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
 import com.github.zly2006.zhihu.util.Log
@@ -167,7 +151,6 @@ import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import io.ktor.client.request.get
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -177,15 +160,9 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readString
 import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
-const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
 const val HOME_CREATE_FAB_TAG = "home_create_fab"
@@ -196,19 +173,17 @@ const val HOME_WRITE_PIN_BUTTON_TAG = "home_write_pin_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
 const val HOME_NOTIFICATION_BUTTON_CONTENT_TAG = "home_notification_button_content"
 const val HOME_NOTIFICATION_BADGE_TAG = "home_notification_badge"
-const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
-const val HOME_ONLINE_NOTIFICATION_TAG = "home_online_notification"
 const val HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX = "readHomePinAnnouncement_"
 private const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
 
 fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
 
-fun homeOnlineNotificationTag(uuid: String): String = "$HOME_ONLINE_NOTIFICATION_TAG:$uuid"
-
 fun homePinAnnouncementReadKey(pinId: Long): String = "$HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX$pinId"
+
+const val HOME_GUEST_LOGIN_PROMPT_TAG = "home:guestLoginPrompt"
 
 // Pager can dispose this page while its feed ViewModels survive. Keep the header rows and
 // synchronization owner alive too, so restoring a saved list index does not shift the visible card.
@@ -216,7 +191,6 @@ private class HomeScreenState(
     settings: SettingsStore,
 ) : ViewModel() {
     val remoteHistory = RemoteHistorySync(settings)
-    val onlineNotifications = mutableStateOf(emptyList<OnlineHomeNotification>())
     val authorPinAnnouncements = mutableStateOf(emptyList<HomePinAnnouncement>())
     val dismissedUpdateVersion = mutableStateOf<String?>(null)
 }
@@ -225,8 +199,8 @@ private class HomeScreenState(
  * 首页信息流页面。
  *
  * 页面顶部承载搜索、通知、账号入口等高频操作，主体是可分页的推荐信息流，底部可按设置显示可拖动刷新 FAB。
- * 设计上首页同时响应推荐算法、Duo3 账号入口迁移、更新公告、在线通知、作者动态和未读通知等状态，因此 UI 改动时要同时检查
- * `recommendationMode`、`duo3_home_account`、`showRefreshFab` 和账号面板相关路径。
+ * 设计上首页同时响应推荐算法、更新公告、在线通知、作者动态和未读通知等状态，因此 UI 改动时要同时检查
+ * `recommendationMode`、`showRefreshFab` 和账号面板相关路径。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,7 +210,6 @@ fun HomeScreen(
     showTopActions: Boolean = true,
     isActive: Boolean = true,
 ) {
-    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val navigator = LocalNavigator.current
     val baseEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
@@ -246,15 +219,11 @@ fun HomeScreen(
     val appPrivateDirectory = rememberAppPrivateDirectory()
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val openExternalUrl = rememberExternalUrlOpener()
-    val openWebViewUrl = rememberWebViewUrlOpener()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
     val autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
-    var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
     val createMenuBlurRadius by animateDpAsState(
         targetValue = if (showCreateMenu) 8.dp else 0.dp,
@@ -272,6 +241,7 @@ fun HomeScreen(
     }
 
     val account = rememberAccountSettingsAccountState().value
+    var guestLoginPromptDismissed by rememberSaveable { mutableStateOf(false) }
     if (account.login && !account.hasRequiredCookie) {
         AlertDialog(
             onDismissRequest = {},
@@ -286,11 +256,6 @@ fun HomeScreen(
     }
     val updateState by rememberSystemUpdateState().collectAsState()
     val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
-    val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
-    val onlineNotificationRepository = remember(settings) {
-        OnlineHomeNotificationRepository(settings)
-    }
-    var onlineNotifications by homeState.onlineNotifications
     val isDebuggable = rememberHomeIsDebuggable()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
         RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
@@ -299,11 +264,6 @@ fun HomeScreen(
         RecommendationMode.MIXED -> viewModel { MixedHomeFeedViewModel() }
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
-    val readingQueueSourceId = "home:${currentRecommendationMode.name}"
-    RegisterReadingQueueSource(
-        sourceId = readingQueueSourceId,
-        items = viewModel.displayItems,
-    )
 
     var dismissedUpdateVersion by homeState.dismissedUpdateVersion
     var authorPinAnnouncements by homeState.authorPinAnnouncements
@@ -372,9 +332,8 @@ fun HomeScreen(
             ) {
                 remoteHistory.start(homeState.viewModelScope, baseEnvironment)
             }
-            if (!account.login && settings.getBoolean("loginForRecommendation", true)) {
-                requestLoginNavigation()
-            } else if (viewModel.displayItems.isEmpty()) {
+            // 未登录也直接加载推荐（游客模式），不再强制跳转登录页；登录入口见顶部提示卡片和「账号」页。
+            if (viewModel.displayItems.isEmpty()) {
                 val cachedItems = if (autoRefreshOnStartup) {
                     emptyList()
                 } else {
@@ -453,26 +412,6 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(lifecycleOwner, paginationEnvironment, versionName) {
-        if (versionName != null) {
-            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                while (true) {
-                    try {
-                        onlineNotifications = onlineNotificationRepository.load(
-                            versionName = versionName,
-                            httpClient = paginationEnvironment.httpClient(),
-                        )
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Log.e("HomeScreen", "Failed to load online notifications", e)
-                    }
-                    delay(HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS)
-                }
-            }
-        }
-    }
-
     // 显示错误信息
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
@@ -488,194 +427,114 @@ fun HomeScreen(
     val pageTurnTarget = rememberPageTurnTarget(
         listState = listState,
         enabled = isActive &&
-            !showAccountBottomSheet &&
             !showCreateMenu &&
             feedAuthorBlockRequest == null &&
             !showBlockByKeywordsDialog &&
             (!account.login || account.hasRequiredCookie),
     )
 
+    val glassProvider = LocalGlassBottomBarProvider.current
+    // 首页列表的独立模糊源：只标记列表层。顶栏胶囊、刷新/+ 悬浮钮都在层外采样它，避免采样到自己。
+    // （底栏玻璃由主壳统一录制整个 tab pager，不再由首页单独录制。）
+    val topGlassSource = glassProvider?.rememberSource()
+    val glassSource = topGlassSource
+    CompositionLocalProvider(LocalGlassBarSource provides topGlassSource) {
     Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
-            modifier = if (duo3HomeAccount) {
-                Modifier
-                    .fillMaxSize()
-                    .blur(createMenuBlurRadius)
-            } else {
-                // master旧版需要pad掉状态栏
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                    .blur(createMenuBlurRadius)
-            },
+            // 整页避让状态栏
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                .blur(createMenuBlurRadius),
             topBar = {
                 if (!showTopActions) {
                     return@Scaffold
                 }
-                if (duo3HomeAccount) {
-                    Box {
+                if (glassProvider != null && topGlassSource != null) {
+                    GlassHomeTopBar(
+                        provider = glassProvider,
+                        source = topGlassSource,
+                        // Scaffold 已统一 pad 掉状态栏
+                        topInset = 0.dp,
+                        searchHint = "搜索内容",
+                        onSearch = { navigator.onNavigate(Search(query = "")) },
+                        unreadCount = if (showUnreadBadge) unreadCount else 0,
+                        onNotification = { navigator.onNavigate(Notification) },
+                    )
+                    return@Scaffold
+                }
+                Surface(shadowElevation = 4.dp) {
+                    Row(
+                        modifier = Modifier
+                            .testTag(HOME_TOP_ACTIONS_TAG)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Surface(
                             modifier = Modifier
-                                .height(
-                                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
-                                ).fillMaxWidth(),
-                        ) { }
-                        Row(
-                            modifier = Modifier
-                                .testTag(HOME_TOP_ACTIONS_TAG)
-                                .fillMaxWidth()
-                                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                                .padding(16.dp, 8.dp, 16.dp, 0.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .weight(1f)
+                                .height(36.dp)
+                                .testTag(HOME_SEARCH_BUTTON_TAG),
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            onClick = {
+                                navigator.onNavigate(
+                                    Search(query = ""),
+                                )
+                            },
                         ) {
-                            Surface(
+                            Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .height(64.dp)
-                                    .testTag(HOME_SEARCH_BUTTON_TAG),
-                                shape = RoundedCornerShape(32.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                onClick = {
-                                    navigator.onNavigate(
-                                        Search(query = ""),
-                                    )
-                                },
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(start = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = "搜索",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "搜索",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        modifier = Modifier.weight(1f),
-                                    )
-
-                                    IconButton(
-                                        onClick = { showAccountBottomSheet = true },
-                                        modifier = Modifier
-                                            .size(64.dp)
-                                            .testTag(HOME_ACCOUNT_BUTTON_TAG),
-                                    ) {
-                                        Box(Modifier.padding(12.dp)) {
-                                            BadgedBox(
-                                                badge = {
-                                                    if (showUnreadBadge && unreadCount > 0) {
-                                                        Badge { }
-                                                    }
-                                                },
-                                            ) {
-                                                val avatarUrl = account.avatarUrl
-                                                if (avatarUrl != null) {
-                                                    AsyncImage(
-                                                        model = avatarUrl,
-                                                        contentDescription = "账号",
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier
-                                                            .size(40.dp)
-                                                            .border(
-                                                                0.5.dp,
-                                                                MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                                                                CircleShape,
-                                                            ).clip(CircleShape),
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        Icons.Default.AccountCircle,
-                                                        contentDescription = "账号",
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                        modifier = Modifier.size(40.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "搜索内容",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
                             }
                         }
-                    }
-                } else {
-                    Surface(shadowElevation = 4.dp) {
-                        Row(
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
                             modifier = Modifier
-                                .testTag(HOME_TOP_ACTIONS_TAG)
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(36.dp)
-                                    .testTag(HOME_SEARCH_BUTTON_TAG),
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                onClick = {
-                                    navigator.onNavigate(
-                                        Search(query = ""),
-                                    )
+                                .size(48.dp)
+                                .testTag(HOME_NOTIFICATION_BUTTON_TAG)
+                                .clickable(role = Role.Button) {
+                                    navigator.onNavigate(Notification)
                                 },
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = "搜索",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "搜索内容",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // 点击盒与内容盒分离，避免 IconButton 的裁剪边界截掉 BadgedBox 的 badge。
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .testTag(HOME_NOTIFICATION_BUTTON_TAG)
-                                    .clickable(role = Role.Button) {
-                                        navigator.onNavigate(Notification)
-                                    },
+                                    .size(40.dp)
+                                    .testTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                // 点击盒与内容盒分离，避免 IconButton 的裁剪边界截掉 BadgedBox 的 badge。
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .testTag(HOME_NOTIFICATION_BUTTON_CONTENT_TAG),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    BadgedBox(
-                                        badge = {
-                                            if (showUnreadBadge && unreadCount > 0) {
-                                                Badge(modifier = Modifier.testTag(HOME_NOTIFICATION_BADGE_TAG)) {
-                                                    Text("$unreadCount")
-                                                }
+                                BadgedBox(
+                                    badge = {
+                                        if (showUnreadBadge && unreadCount > 0) {
+                                            Badge(modifier = Modifier.testTag(HOME_NOTIFICATION_BADGE_TAG)) {
+                                                Text("$unreadCount")
                                             }
-                                        },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Notifications,
-                                            contentDescription = "通知",
-                                            tint = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                    }
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                    )
                                 }
                             }
                         }
@@ -683,20 +542,14 @@ fun HomeScreen(
                 }
             },
         ) { scaffoldPadding ->
-            if (duo3HomeAccount && showAccountBottomSheet) {
-                MyModalBottomSheet(
-                    onDismissRequest = { showAccountBottomSheet = false },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ) {
-                    AccountSettingScreen(
-                        innerPadding = PaddingValues(0.dp),
-                        unreadCount = unreadCount,
-                        showUnreadBadge = showUnreadBadge,
-                        onDismissRequest = { showAccountBottomSheet = false },
-                    )
-                }
-            }
 
+            Box(
+                if (glassProvider != null && topGlassSource != null) {
+                    glassProvider.contentSource(Modifier.fillMaxSize(), topGlassSource)
+                } else {
+                    Modifier.fillMaxSize()
+                },
+            ) {
             FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
                 PaginatedList(
                     items = viewModel.displayItems,
@@ -706,12 +559,27 @@ fun HomeScreen(
                         .testTag(HOME_FEED_LIST_TAG),
                     contentPadding = PaddingValues(
                         top = scaffoldPadding.calculateTopPadding() + 8.dp,
-                        bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
+                        // 底栏 + 播放条 + 右下角 FAB 叠放高度，列表最后几条不被挡住、点击不会落到 FAB 上
+                        bottom = innerPadding.calculateBottomPadding() +
+                            if (showRefreshFab) 144.dp else 72.dp,
                     ),
                     onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                     footer = ProgressIndicatorFooter,
                     key = { item -> item.stableKey },
                     topContent = {
+                        item("guest_login_prompt") {
+                            AnnouncementCard(
+                                modifier = Modifier.testTag(HOME_GUEST_LOGIN_PROMPT_TAG),
+                                visible = !account.login && !guestLoginPromptDismissed,
+                                title = "正在以游客身份浏览",
+                                content = "登录后可获得个性化推荐，并使用点赞、收藏、评论等功能。",
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null) },
+                                accept = { Text("登录") },
+                                onAccept = ::requestLoginNavigation,
+                                dismiss = { Text("先逛逛") },
+                                onDismiss = { guestLoginPromptDismissed = true },
+                            )
+                        }
                         item {
                             val availableUpdate = updateAnnouncement
 
@@ -731,80 +599,6 @@ fun HomeScreen(
                                 },
                                 colors = AnnouncementCardDefaults.colorsImportant(),
                             )
-                        }
-                        onlineNotifications.forEach { notification ->
-                            val markRead = {
-                                onlineNotificationRepository.markRead(notification)
-                                onlineNotifications = onlineNotifications.filterNot { it.uuid == notification.uuid }
-                            }
-                            item(notification.uuid) {
-                                Box(modifier = Modifier.animateItem()) {
-                                    AnnouncementCard(
-                                        modifier = Modifier.testTag(homeOnlineNotificationTag(notification.uuid)),
-                                        visible = true,
-                                        title = notification.title,
-                                        leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                                        content = notification.content,
-                                        accept = notification.accept?.let { accept ->
-                                            { Text(accept.text) }
-                                        },
-                                        onAccept = {
-                                            val accept = notification.accept
-                                            markRead()
-                                            when (accept?.key) {
-                                                HOME_NOTIFICATION_ACTION_OPEN_URL -> {
-                                                    accept.value
-                                                        ?.jsonPrimitive
-                                                        ?.contentOrNull
-                                                        ?.let(openExternalUrl::invoke)
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_WEBVIEW -> {
-                                                    accept.value
-                                                        ?.jsonPrimitive
-                                                        ?.contentOrNull
-                                                        ?.let(openWebViewUrl::invoke)
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
-                                                    navigator.onNavigate(Account.SystemAndUpdateSettings())
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
-                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                        navigator.onNavigate(Pin(it))
-                                                    }
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_ANSWER -> {
-                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                        navigator.onNavigate(Article(type = ArticleType.Answer, id = it))
-                                                    }
-                                                }
-                                                HOME_NOTIFICATION_ACTION_OPEN_ARTICLE -> {
-                                                    accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
-                                                        navigator.onNavigate(Article(type = ArticleType.Article, id = it))
-                                                    }
-                                                }
-                                                HOME_NOTIFICATION_ACTION_SET_SETTING -> {
-                                                    val setting = accept.value?.jsonObject
-                                                    val name = setting?.get("setting_name")?.jsonPrimitive?.contentOrNull
-                                                    when (setting?.get("value_type")?.jsonPrimitive?.contentOrNull) {
-                                                        "boolean" -> setting["value"]?.jsonPrimitive?.booleanOrNull?.let {
-                                                            settings.putBoolean(name!!, it)
-                                                        }
-                                                        "string" -> setting["value"]?.jsonPrimitive?.contentOrNull?.let {
-                                                            settings.putString(name!!, it)
-                                                        }
-                                                        "int" -> setting["value"]?.jsonPrimitive?.intOrNull?.let {
-                                                            settings.putInt(name!!, it)
-                                                        }
-                                                    }
-                                                }
-                                                else -> userMessages.showShortMessage("当前版本不支持此通知操作")
-                                            }
-                                        },
-                                        dismiss = { Text(notification.dismiss) },
-                                        onDismiss = markRead,
-                                    )
-                                }
-                            }
                         }
                         authorPinAnnouncements.forEach { announcement ->
                             item(announcement.pinId) {
@@ -856,7 +650,6 @@ fun HomeScreen(
                 ) { item ->
                     FeedCard(
                         item,
-                        readingQueueSourceId = readingQueueSourceId,
                         thumbnailUrl = when (val target = item.feed?.target) {
                             is Feed.AnswerTarget -> target.thumbnail
                             else -> null
@@ -938,31 +731,38 @@ fun HomeScreen(
                     }
                 }
 
-                if (showRefreshFab) {
-                    if (isDebuggable) {
-                        DraggableRefreshButton(
-                            onClick = {
-                                val data = Json.encodeToString(viewModel.debugData)
-                                paginationEnvironment.setPlainTextClipboard("data", data)
-                                userMessages.showShortMessage("已复制调试数据")
-                            },
-                            preferenceName = "copyAll",
-                            bottomAvoidance = readingPlayerOverlayPadding,
-                        ) {
-                            Icon(Icons.Default.CopyAll, contentDescription = "复制")
-                        }
-                    }
-                    DraggableRefreshButton(
-                        modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
-                        bottomAvoidance = readingPlayerOverlayPadding,
-                        onClick = { viewModel.refresh(paginationEnvironment) },
-                    ) {
-                        if (viewModel.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                        } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                        }
-                    }
+            }
+            }
+        }
+
+        } // end contentSource（列表模糊层）
+
+        if (showRefreshFab) {
+            if (isDebuggable) {
+                DraggableRefreshButton(
+                    onClick = {
+                        val data = Json.encodeToString(viewModel.debugData)
+                        paginationEnvironment.setPlainTextClipboard("data", data)
+                        userMessages.showShortMessage("已复制调试数据")
+                    },
+                    preferenceName = "copyAll",
+                    bottomAvoidance = 0.dp,
+                    // 调试专用按钮默认放左侧：放右侧会与“刷新”FAB 默认位置重叠，看起来像重复的玻璃圆钮
+                    initiallyOnLeft = true,
+                ) {
+                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                }
+            }
+            DraggableRefreshButton(
+                modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
+                bottomAvoidance = innerPadding.calculateBottomPadding(),
+                stackAboveFab = true,
+                onClick = { viewModel.refresh(paginationEnvironment) },
+            ) {
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
                 }
             }
         }
@@ -990,7 +790,7 @@ fun HomeScreen(
                 .align(Alignment.BottomEnd)
                 .padding(
                     end = 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding + 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 16.dp,
                 ),
             horizontalAlignment = Alignment.End,
         ) {
@@ -1060,25 +860,28 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
-            val createFabOpacity = remember(settings) {
-                settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
-            }
-            FloatingActionButton(
-                modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
-                onClick = { showCreateMenu = !showCreateMenu },
-                shape = CircleShape,
-                containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
-                elevation = if (createFabOpacity < 1f) {
-                    FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                } else {
-                    FloatingActionButtonDefaults.elevation()
-                },
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "创作")
+            if (glassProvider != null && glassSource != null) {
+                glassProvider.Fab(
+                    source = glassSource,
+                    onClick = { showCreateMenu = !showCreateMenu },
+                    modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "创作")
+                }
+            } else {
+                FloatingActionButton(
+                    modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
+                    onClick = { showCreateMenu = !showCreateMenu },
+                    shape = CircleShape,
+                    containerColor = FloatingActionButtonDefaults.containerColor,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "创作")
+                }
             }
         }
     }
+    } // LocalGlassBarSource = 首页列表源
 
     FeedAuthorBlockConfirmDialog(
         request = feedAuthorBlockRequest,

@@ -27,8 +27,6 @@ import com.github.zly2006.zhihu.platform.nativeIsDesktop
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.ui.NativeArticleSpeechController
-import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.updater.SemanticVersion
 import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.updater.fetchLatestZhihuRelease
@@ -189,9 +187,6 @@ actual fun rememberDeveloperInfo(): DeveloperInfoSnapshot =
         } else {
             "网络状态：iOS 端使用系统网络"
         },
-        ttsState = if (nativeIsDesktop) NativeArticleSpeechController.currentState else TtsState.Uninitialized,
-        currentTtsEngineLabel = if (nativeIsDesktop) "macOS 系统语音" else "未初始化",
-        availableTtsEngineLabels = if (nativeIsDesktop) listOf("NSSpeechSynthesizer") else emptyList(),
     )
 
 @Composable
@@ -214,12 +209,6 @@ private fun loadNativeAboutLibrariesJson(): String? {
 @Composable
 actual fun rememberShowFullVariantLicenses(): Boolean = false
 
-actual val isWebViewCustomFontSupported: Boolean = false
 
 @Composable
-actual fun WebViewCustomFontSettings(
-    customFontName: String?,
-    onCustomFontNameChange: (String?) -> Unit,
-) {
-    error("$platformName 暂不支持 WebView 自定义字体设置")
-}
+actual fun rememberCrashLogStore(): CrashLogStore = EmptyCrashLogStore

@@ -17,6 +17,12 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -30,6 +36,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -56,9 +63,19 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.Newspaper
+import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import com.github.zly2006.zhihu.ui.components.GlassBarTab
+import com.github.zly2006.zhihu.ui.components.LocalGlassBarSource
+import com.github.zly2006.zhihu.ui.components.LocalGlassBottomBarProvider
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
@@ -141,22 +158,20 @@ import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.navigation.loginNavigationRequestFlow
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
+import androidx.compose.animation.core.Animatable
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
-import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
-import com.github.zly2006.zhihu.ui.components.CompactReadingPlayerButton
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
-import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
-import com.github.zly2006.zhihu.ui.components.ReadingQueueSheet
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.ThemePreviewScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementScreen
+import com.github.zly2006.zhihu.ui.subscreens.CrashLogsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
-import com.github.zly2006.zhihu.ui.subscreens.ReadingSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.delay
@@ -183,7 +198,6 @@ private sealed class MainTabPage(
     data object AccountPage : MainTabPage(Account, "account")
 }
 
-internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
 internal val LocalArticleNavController = staticCompositionLocalOf<NavHostController?> { null }
 
 /**
@@ -240,15 +254,11 @@ fun ZhihuMain(
         height = maxHeight,
     )
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
-    val duo3HomeAccount = preferenceState.duo3HomeAccount
     val tapToScrollToTopEnabled = preferenceState.tapToScrollToTopEnabled
     val autoHideBottomBar = preferenceState.autoHideBottomBar
-    val collectionDirectBrowseEnabled = preferenceState.collectionDirectBrowseEnabled
     val selectedBottomBarItemKeys = preferenceState.selectedBottomBarItemKeys
     val startDestination = preferenceState.startDestination
     val reloadBottomBarPreferences = preferenceState::reload
-    val readingPlayer = rememberReadingPlayerController()
-    val readingPlayerState by readingPlayer.state
     val settings = rememberSettingsStore()
 
     /** 右侧详情独立持有返回栈；栏内导航保留上级，从左侧重新选项时清空。 */
@@ -257,10 +267,6 @@ fun ZhihuMain(
     val detailEntry by detailNavController.currentBackStackEntryAsState()
     val selectedContentDestination = detailEntry.readingDestinationOrNull()
     val hasOpenSecondaryDetail = detailEntry?.destination?.hasRoute<EmptyDetail>() == false
-    var showReadingQueue by remember { mutableStateOf(false) }
-    var isReadingPlayerExpandedByUser by remember { mutableStateOf(false) }
-    var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
-    val readingPlayerOverlayOffsetState = remember { ReadingPlayerOverlayOffsetState() }
     val density = LocalDensity.current
     val currentOnMainTabDestinationChange by rememberUpdatedState(onCurrentMainTabDestinationChange)
 
@@ -291,67 +297,9 @@ fun ZhihuMain(
         navigateContent(destination, detailNavController)
     }
 
-    fun openReadingDestination(destination: NavDestination, onlyIfReading: Boolean = false) {
-        val current = if (hasOpenDetail) selectedContentDestination else navEntry.readingDestinationOrNull()
-        if (current == destination || (onlyIfReading && current == null)) return
-        val opensInDetail = useSecondaryContentNavigation && destination.isDetailPaneDestination()
-        if (hasOpenDetail) {
-            if (opensInDetail) {
-                detailNavController.popBackStack()
-            } else {
-                detailNavController.popBackStack(detailNavController.graph.startDestinationId, inclusive = false)
-            }
-        } else if (current != null && !opensInDetail) {
-            navController.popBackStack()
-        }
-        if (opensInDetail) {
-            detailOwnerEntryId = navController.currentBackStackEntry?.id
-            navigateContent(destination, detailNavController)
-        } else {
-            navigate(destination)
-        }
-    }
-    val isOnReadingDetail = hasOpenDetail ||
-        navEntry?.destination?.hasRoute<Article>() == true ||
-        navEntry?.destination?.hasRoute<Question>() == true ||
-        navEntry?.destination?.hasRoute<Pin>() == true
-    val isReadingPlayerExpanded = readingPlayerState.hasSession &&
-        (isOnReadingDetail || isReadingPlayerExpandedByUser)
-    val shouldCompactPlayerOnBackgroundInteraction by rememberUpdatedState(
-        isReadingPlayerExpandedByUser && !isOnReadingDetail,
-    )
-    val readingPlayerOverlayPadding = when {
-        !readingPlayerState.hasSession -> 0.dp
-        !isReadingPlayerExpanded -> 0.dp
-        readingPlayerHeightPx > 0 -> with(density) { readingPlayerHeightPx.toDp() } + 16.dp
-        else -> 16.dp
-    }
-
-    LaunchedEffect(readingPlayerState.hasSession) {
-        if (!readingPlayerState.hasSession) {
-            showReadingQueue = false
-            isReadingPlayerExpandedByUser = false
-            readingPlayerOverlayOffsetState.resetOffset()
-        }
-    }
-    var previousReadingItemKey by remember { mutableStateOf(readingPlayerState.currentItem?.key) }
-    LaunchedEffect(readingPlayerState.currentItem?.key) {
-        val currentItem = readingPlayerState.currentItem
-        val currentItemKey = currentItem?.key
-        val itemChanged = previousReadingItemKey != null && previousReadingItemKey != currentItemKey
-        previousReadingItemKey = currentItemKey
-        if (itemChanged && currentItem != null) {
-            openReadingDestination(currentItem.toDestination(readingPlayerState.sourceId), onlyIfReading = true)
-        }
-    }
-
     // 离开文章页时恢复系统状态栏（只在实际切换时触发）
     val isOnArticle = (hasOpenDetail && detailEntry?.destination?.hasRoute<Article>() == true) ||
         navEntry?.destination?.hasRoute<Article>() == true
-    LaunchedEffect(navEntry) {
-        isReadingPlayerExpandedByUser = false
-        if (!isOnArticle) readingPlayerOverlayOffsetState.clearRoute()
-    }
     var wasOnArticle by remember { mutableStateOf(false) }
     if (!isOnArticle && wasOnArticle) {
         LeaveImmersiveModeCleanup()
@@ -376,21 +324,21 @@ fun ZhihuMain(
     }
 
     val allBottomBarItems = listOf(
-        Triple(Home, "主页", Icons.Filled.Home),
-        Triple(Follow, "关注", Icons.Filled.Group),
-        Triple(HotList, "热榜", Icons.Filled.Whatshot),
-        Triple(Daily, "日报", Icons.Filled.Newspaper),
-        Triple(OnlineHistory, "历史", Icons.Filled.History),
-        Triple(MyCollections, "收藏夹", Icons.Filled.Bookmarks),
-        Triple(Account, "账号", Icons.Filled.ManageAccounts),
+        BottomBarItem(Home, "主页", Icons.Filled.Home, Icons.Outlined.Home),
+        BottomBarItem(Follow, "关注", Icons.Filled.Group, Icons.Outlined.Group),
+        BottomBarItem(HotList, "热榜", Icons.Filled.Whatshot, Icons.Outlined.Whatshot),
+        BottomBarItem(Daily, "日报", Icons.Filled.Newspaper, Icons.Outlined.Newspaper),
+        BottomBarItem(OnlineHistory, "历史", Icons.Filled.History, Icons.Outlined.History),
+        BottomBarItem(MyCollections, "收藏夹", Icons.Filled.Bookmarks, Icons.Outlined.Bookmarks),
+        BottomBarItem(Account, "账号", Icons.Filled.ManageAccounts, Icons.Outlined.ManageAccounts),
     )
     val bottomBarItems = selectedBottomBarItemKeys.mapNotNull { key ->
-        allBottomBarItems.firstOrNull { it.first.name == key }
+        allBottomBarItems.firstOrNull { it.destination.name == key }
     }
 
     val mainTabPages = remember(bottomBarItems) {
         bottomBarItems.flatMap { item ->
-            when (item.first) {
+            when (item.destination) {
                 Home -> listOf(MainTabPage.HomePage)
                 Follow -> listOf(MainTabPage.FollowPage)
                 HotList -> listOf(MainTabPage.HotListPage)
@@ -420,11 +368,74 @@ fun ZhihuMain(
     var currentMainTabDestination by remember { mutableStateOf(startDestination) }
     val isAccountSurface = currentMainTabDestination == Account
 
-    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation && !showDetailPane) {
-        navController.popBackStack()
+    // 预测性返回：读取设置「启用预测性返回」（enable_predictive_back，默认开）。
+    // 开启时返回手势让详情页跟手横向滑出、下层列表带视差跟进，松手后滑完剩余距离再出栈，取消则回弹；不缩放、不加圆角。
+    val predictiveBackEnabled by rememberObservedSetting(settings, "enable_predictive_back") { getBoolean("enable_predictive_back", true) }
+    val detailBackScope = rememberCoroutineScope()
+
+    // 窄屏时阅读页（回答/文章/想法）由详情栈承载并覆盖在列表之上。详情栈只剩这一页时，
+    // 出栈会让整个详情层消失，NavHost 自己的出场动画来不及播放，所以由这里驱动详情层的横向位移。
+    // detailOverlaySlide：0 = 详情完全展示，1 = 详情完全滑出到右侧。
+    val detailOverlaySlide = remember { Animatable(1f) }
+    var detailOverlayExiting by remember { mutableStateOf(false) }
+    val isNarrowDetailOverlay = showDetailPane && !showListDetail
+    LaunchedEffect(isNarrowDetailOverlay) {
+        if (isNarrowDetailOverlay) {
+            detailOverlaySlide.animateTo(0f, tween(300))
+        } else {
+            detailOverlaySlide.snapTo(1f)
+            detailOverlayExiting = false
+        }
     }
-    PlatformBackHandler(enabled = showDetailPane) {
-        detailNavController.popBackStack()
+    // 只有「返回会离开整层详情」时由这里接管手势；详情栈内部的多页返回、宽屏分栏交给 NavHost 自带的跟手转场。
+    val overlayBackActive = isNarrowDetailOverlay &&
+        detailEntry != null &&
+        detailNavController.previousBackStackEntry?.destination?.hasRoute<EmptyDetail>() == true
+
+    fun popDetail() {
+        if (!overlayBackActive) {
+            detailNavController.popBackStack()
+            return
+        }
+        if (detailOverlayExiting) return
+        detailOverlayExiting = true
+        detailBackScope.launch {
+            val remaining = 1f - detailOverlaySlide.value
+            detailOverlaySlide.animateTo(1f, tween((280 * remaining).toInt().coerceAtLeast(90)))
+            detailNavController.popBackStack()
+        }
+    }
+
+    val detailBackGesture = if (predictiveBackEnabled && overlayBackActive) {
+        DetailBackGesture(
+            onProgress = { p ->
+                if (!detailOverlayExiting) detailBackScope.launch { detailOverlaySlide.snapTo(predictiveBackTranslationFraction(p)) }
+            },
+            onCancel = {
+                detailBackScope.launch { detailOverlaySlide.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+            },
+            onBack = { popDetail() },
+        )
+    } else {
+        null
+    }
+
+    /**
+     * 必须放在详情 NavHost 之后组合：NavHost 自己也注册了返回回调（返回栈多于一页时启用），
+     * 后注册的回调优先，否则手势会被 NavHost 抢走，详情层整层消失、没有跟手动画。
+     */
+    @Composable
+    fun DetailBackHandler(enabled: Boolean) {
+        if (detailBackGesture != null) {
+            PlatformPredictiveBackHandler(
+                enabled = enabled,
+                onProgress = detailBackGesture.onProgress,
+                onCancel = detailBackGesture.onCancel,
+                onBack = detailBackGesture.onBack,
+            )
+        } else {
+            PlatformBackHandler(enabled = enabled) { popDetail() }
+        }
     }
 
     fun navigateTopLevel(destination: TopLevelDestination) {
@@ -524,21 +535,22 @@ fun ZhihuMain(
                         navigate(destination)
                     }
                 },
-                onNavigateBack = detailNavController::popBackStack,
+                onNavigateBack = ::popDetail,
                 onNavigateTopLevel = ::navigateTopLevel,
             ),
             LocalSelectedContentDestination provides selectedContentDestination,
-            LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
-            LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
+            LocalDetailBackGesture provides detailBackGesture,
         ) {
             NavHost(
                 navController = detailNavController,
                 startDestination = EmptyDetail,
-                modifier = modifier.testTag("detail_pane"),
+                modifier = modifier
+                    .testTag("detail_pane")
+                    .background(MaterialTheme.colorScheme.background),
                 enterTransition = { slideInHorizontally(tween(300)) { it } },
-                exitTransition = { ExitTransition.None },
-                popEnterTransition = { EnterTransition.None },
-                popExitTransition = { slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300)) },
+                exitTransition = { listExitTransition() },
+                popEnterTransition = { listPopEnterTransition() },
+                popExitTransition = { detailPopExitTransition() },
             ) {
                 composable<EmptyDetail> {
                     EmptyDetailPane()
@@ -555,6 +567,7 @@ fun ZhihuMain(
                 }
                 accountSettings(reloadBottomBarPreferences, blocklistSettingsNlpContent)
             }
+            DetailBackHandler(enabled = overlayBackActive)
         }
     }
 
@@ -580,10 +593,27 @@ fun ZhihuMain(
                 detailNavController.navigate(directReadingDestination)
             }
         }
-        if (showListDetail || !showDetailPane) {
+        val glassBarProvider = LocalGlassBottomBarProvider.current
+        val glassBarSource = glassBarProvider?.rememberSource()
+        // 窄屏打开阅读页时列表继续留在下层（生命周期降为 CREATED），返回手势缩小详情时能看到列表，
+        // 详情层也能做滑入/滑出动画；以前列表和详情互斥组合，切换时没有任何过渡。
+        run {
             paneStateHolder.SaveableStateProvider("list") {
                 Scaffold(
                     modifier = listPaneModifier
+                        .then(
+                            if (isNarrowDetailOverlay) {
+                                Modifier
+                                    .graphicsLayer {
+                                        translationX = size.width * listParallaxFraction(detailOverlaySlide.value)
+                                    }.drawWithContent {
+                                        drawContent()
+                                        drawRect(Color.Black, alpha = listScrimAlpha(detailOverlaySlide.value))
+                                    }
+                            } else {
+                                Modifier
+                            },
+                        )
                         .testTag("list_pane")
                         .nestedScroll(bottomBarScrollConnection),
                     bottomBar = {
@@ -598,30 +628,57 @@ fun ZhihuMain(
                                 enter = slideInVertically(tween(200)) { it },
                                 exit = slideOutVertically(tween(200)) { it },
                             ) {
-                                NavigationBar(
+                                fun onBottomItemClick(destination: TopLevelDestination, selected: Boolean) {
+                                    if (!selected) {
+                                        navigateTopLevel(destination)
+                                    } else if (tapToScrollToTopEnabled) {
+                                        scrollToTopTrigger++
+                                    }
+                                }
+                                if (glassBarProvider != null && glassBarSource != null) {
+                                    val selectedIndex = bottomBarItems.indexOfFirst { item ->
+                                        currentBottomDestination?.let { it::class == item.destination::class } == true
+                                    }
+                                    glassBarProvider.Bar(
+                                        source = glassBarSource,
+                                        tabs = bottomBarItems.map { item ->
+                                            GlassBarTab(
+                                                label = item.label,
+                                                selectedIcon = item.selectedIcon,
+                                                unselectedIcon = item.unselectedIcon,
+                                                testTag = "nav_tab_${item.destination.name.lowercase()}",
+                                            )
+                                        },
+                                        selectedIndex = selectedIndex,
+                                        onSelect = { index ->
+                                            bottomBarItems.getOrNull(index)?.let { item ->
+                                                onBottomItemClick(item.destination, index == selectedIndex)
+                                            }
+                                        },
+                                        modifier = Modifier,
+                                    )
+                                } else NavigationBar(
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                     modifier = Modifier.height(
                                         64.dp + bottomPadding,
                                     ),
                                 ) {
                                     @Composable
-                                    fun Item(
-                                        destination: TopLevelDestination,
-                                        label: String,
-                                        icon: ImageVector,
-                                    ) {
+                                    fun Item(item: BottomBarItem) {
+                                        val destination = item.destination
+                                        val selected =
+                                            currentBottomDestination?.let { it::class == destination::class } == true
                                         val tag = "nav_tab_${destination.name.lowercase()}"
                                         NavigationBarItem(
-                                            currentBottomDestination?.let { it::class == destination::class } == true,
+                                            selected = selected,
                                             onClick = {
-                                                isReadingPlayerExpandedByUser = false
-                                                if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                                if (!selected) {
                                                     navigateTopLevel(destination)
                                                 } else if (tapToScrollToTopEnabled) {
                                                     scrollToTopTrigger++
                                                 }
                                             },
-                                            label = { Text(label) },
+                                            label = { Text(item.label) },
                                             alwaysShowLabel = true,
                                             colors = if (!isDarkTheme) {
                                                 NavigationBarItemDefaults.colors().copy(
@@ -634,14 +691,21 @@ fun ZhihuMain(
                                                 NavigationBarItemDefaults.colors()
                                             },
                                             icon = {
-                                                Icon(icon, contentDescription = label)
+                                                Icon(
+                                                    imageVector = if (selected) {
+                                                        item.selectedIcon
+                                                    } else {
+                                                        item.unselectedIcon
+                                                    },
+                                                    contentDescription = item.label,
+                                                )
                                             },
                                             modifier = Modifier.padding(top = 4.dp).testTag(tag),
                                         )
                                     }
 
                                     bottomBarItems.forEach { item ->
-                                        Item(item.first, item.second, item.third)
+                                        Item(item)
                                     }
                                 }
                             }
@@ -649,6 +713,7 @@ fun ZhihuMain(
                     },
                 ) { innerPadding ->
                     CompositionLocalProvider(
+                        LocalGlassBarSource provides glassBarSource,
                         LocalLifecycleOwner provides listLifecycleOwner,
                         LocalArticleNavController provides navController,
                         LocalNavigator provides Navigator(
@@ -668,45 +733,24 @@ fun ZhihuMain(
                             onNavigateBack = navController::popBackStack,
                             onNavigateTopLevel = ::navigateTopLevel,
                         ),
-                        LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
-                        LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
                         LocalSelectedContentDestination provides selectedContentDestination,
+                        LocalDetailBackGesture provides detailBackGesture,
                     ) {
                         NavHost(
                             navController,
-                            modifier = Modifier.pointerInput(Unit) {
-                                while (true) {
-                                    awaitPointerEventScope {
-                                        awaitFirstDown(
-                                            requireUnconsumed = false,
-                                            pass = PointerEventPass.Initial,
-                                        )
-                                        while (
-                                            awaitPointerEvent(PointerEventPass.Final)
-                                                .changes
-                                                .any { it.pressed }
-                                        ) {
-                                            // 等手势完成后再重组，避免取消同一次背景点击或滚动。
-                                        }
-                                    }
-                                    if (shouldCompactPlayerOnBackgroundInteraction) {
-                                        delay(100)
-                                        isReadingPlayerExpandedByUser = false
-                                    }
-                                }
-                            },
                             startDestination = MainTabs,
                             enterTransition = {
                                 slideInHorizontally(tween(300)) { it }
                             },
                             exitTransition = {
-                                ExitTransition.None
+                                listExitTransition()
                             },
+                            // 问题/搜索等主栈页面的返回手势由 NavHost 自带的预测返回驱动这两段转场（跟手横滑 + 列表视差）。
                             popEnterTransition = {
-                                EnterTransition.None
+                                listPopEnterTransition()
                             },
                             popExitTransition = {
-                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                                detailPopExitTransition()
                             },
                         ) {
                             composable<MainTabs> {
@@ -715,16 +759,12 @@ fun ZhihuMain(
                                     pages = mainTabPages,
                                     scrollToTopTrigger = scrollToTopTrigger,
                                     innerPadding = innerPadding,
-                                    collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
                                     showHomeTopActions = showHomeTopActions,
                                 )
                             }
                             composable<Login> {
                                 LoginScreen(
                                     onLoginComplete = { navController.popBackStack() },
-                                    onOpenTelemetrySettings = {
-                                        navController.navigate(Account.SystemAndUpdateSettings("allowTelemetry"))
-                                    },
                                 )
                             }
                             composable<Question> { navEntry ->
@@ -789,12 +829,7 @@ fun ZhihuMain(
                                     if (targetState.destination.hasRoute<Search>()) {
                                         ExitTransition.None
                                     } else {
-                                        fadeOut(animationSpec = tween(durationMillis = 180)) +
-                                            slideOutVertically(animationSpec = tween(durationMillis = 220)) { it / 20 } +
-                                            scaleOut(
-                                                animationSpec = tween(durationMillis = 220),
-                                                targetScale = 0.985f,
-                                            )
+                                        detailPopExitTransition()
                                     }
                                 },
                             ) { navEntry ->
@@ -851,7 +886,29 @@ fun ZhihuMain(
         if (showListDetail || showDetailPane || detailEntry == null) {
             paneStateHolder.SaveableStateProvider("detail") {
                 // 尺寸变化只调整同一宿主的布局；隐藏时保存整个导航子树，独立弹窗也随页面离开组合。
-                Row(if (showListDetail || showDetailPane) Modifier.fillMaxSize() else Modifier.size(0.dp)) {
+                Row(
+                    if (showListDetail || showDetailPane) {
+                        Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (isNarrowDetailOverlay) {
+                                    Modifier
+                                        .testTag(DETAIL_OVERLAY_TAG)
+                                        .graphicsLayer { translationX = size.width * detailOverlaySlide.value }
+                                        // 详情覆盖在列表上，空白处也不能把点击漏给下层列表。
+                                        .pointerInput(Unit) {
+                                            awaitPointerEventScope {
+                                                while (true) awaitPointerEvent(PointerEventPass.Initial)
+                                            }
+                                        }
+                                } else {
+                                    Modifier
+                                },
+                            )
+                    } else {
+                        Modifier.size(0.dp)
+                    },
+                ) {
                     if (showListDetail) {
                         Spacer(Modifier.width(listPaneWidth))
                         ListDetailDivider(
@@ -878,84 +935,26 @@ fun ZhihuMain(
                 }
             }
         }
-
-        AnimatedVisibility(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    start = if (showListDetail && showDetailPane) listPaneWidth + LIST_DETAIL_DIVIDER_WIDTH else 0.dp,
-                    bottom = bottomPadding + 16.dp + if (
-                        !showDetailPane && showMainNavigation && showMainNavigationBar && (!autoHideBottomBar || isBottomBarVisible)
-                    ) {
-                        64.dp
-                    } else {
-                        0.dp
-                    },
-                ).fillMaxWidth(),
-            visible = isReadingPlayerExpanded,
-            enter = fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.92f),
-            exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.92f),
-        ) {
-            ReadingPlayerBar(
-                state = readingPlayerState,
-                onPrevious = readingPlayer::playPrevious,
-                onTogglePlayPause = readingPlayer::togglePlayPause,
-                onNext = readingPlayer::playNext,
-                onStop = readingPlayer::stop,
-                onOpenQueue = { showReadingQueue = true },
-                onPlaybackSpeedChange = { speed ->
-                    saveReadingPlaybackSpeed(settings, speed)
-                    readingPlayer.setPlaybackSpeed(speed)
-                },
-                onBackgroundInteraction = {
-                    if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
-                },
-                modifier = Modifier
-                    .onSizeChanged { readingPlayerHeightPx = it.height }
-                    .graphicsLayer {
-                        translationY = readingPlayerOverlayOffsetState.verticalOffsetPx
-                    },
-            )
-        }
-
-        AnimatedVisibility(
-            visible = readingPlayerState.hasSession && !isReadingPlayerExpanded,
-            enter = fadeIn(tween(220)),
-            exit = fadeOut(tween(160)),
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                CompactReadingPlayerButton(
-                    state = readingPlayerState,
-                    onExpand = { isReadingPlayerExpandedByUser = true },
-                )
-            }
-        }
     }
+}
 
-    if (showReadingQueue && readingPlayerState.hasSession) {
-        ReadingQueueSheet(
-            state = readingPlayerState,
-            onDismissRequest = {
-                showReadingQueue = false
-                if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
-            },
-            onItemClick = { index, item ->
-                previousReadingItemKey = item.key
-                if (index != readingPlayerState.currentIndex) {
-                    readingPlayer.playAt(index)
-                }
-                showReadingQueue = false
-                openReadingDestination(item.toDestination(readingPlayerState.sourceId))
-            },
-            onOpenSettings = {
-                showReadingQueue = false
-                isReadingPlayerExpandedByUser = false
-                if (navEntry?.destination?.hasRoute<Account.ReadingSettings>() != true) {
-                    navigate(Account.ReadingSettings)
-                }
-            },
-        )
-    }
+/** 测试入口：按页面 key（home/follow/hotlist/daily/online_history/my_collections/account）渲染主壳 pager。 */
+@Composable
+fun MainTabsPagerForTest(
+    pagerState: PagerState,
+    pageKeys: List<String>,
+    innerPadding: PaddingValues,
+) {
+    val all = listOf(
+        MainTabPage.HomePage,
+        MainTabPage.FollowPage,
+        MainTabPage.HotListPage,
+        MainTabPage.DailyPage,
+        MainTabPage.OnlineHistoryPage,
+        MainTabPage.MyCollectionsPage,
+        MainTabPage.AccountPage,
+    )
+    MainTabsPager(pagerState, pageKeys.mapNotNull { k -> all.firstOrNull { it.key == k } }, 0, innerPadding, true)
 }
 
 /**
@@ -970,15 +969,29 @@ private fun MainTabsPager(
     pages: List<MainTabPage>,
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
-    collectionDirectBrowseEnabled: Boolean,
     showHomeTopActions: Boolean,
 ) {
+    val glassProvider = LocalGlassBottomBarProvider.current
+    val glassSource = LocalGlassBarSource.current
+    // 根因修复：以前每个非首页 tab 各自把页面录进同一个底栏 backdrop、首页又在内部单独录制；
+    // pager 会预取/保留相邻页，多个节点抢写同一个 layer，底栏常采样到屏幕外或空白页（玻璃“消失”/像不透明）。
+    // 现在由这里统一录制整个 pager：底栏看到的永远是屏幕上实际可见的内容（滑动切页时也一致），不随切页增删 modifier。
+    // pager 内部不再暴露底栏源（页面内悬浮钮若采样它会把自己录进去），首页自带列表源给自己的悬浮钮用。
+    Box(
+        if (glassProvider != null && glassSource != null) {
+            glassProvider.contentSource(Modifier.fillMaxSize(), glassSource).testTag(MAIN_TABS_GLASS_SOURCE_TAG)
+        } else {
+            Modifier.fillMaxSize()
+        },
+    ) {
+    CompositionLocalProvider(LocalGlassBarSource provides null) {
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
         pageNestedScrollConnection = NoOpPagerNestedScrollConnection,
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
+        Box(Modifier.fillMaxSize().testTag(mainTabPageTag(pageIndex))) {
         when (page) {
             MainTabPage.HomePage -> HomeScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
@@ -999,16 +1012,17 @@ private fun MainTabsPager(
             )
             MainTabPage.DailyPage -> DailyScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
+                bottomPadding = innerPadding.calculateBottomPadding(),
                 isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
+                bottomPadding = innerPadding.calculateBottomPadding(),
                 isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
-                collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
                 isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.AccountPage -> AccountSettingScreen(
@@ -1016,33 +1030,31 @@ private fun MainTabsPager(
                 isActive = pagerState.currentPage == pageIndex,
             )
         }
+        } // Box page
     }
+    } // LocalGlassBarSource = null
+    } // 底栏玻璃源：整个 pager
 }
+
+/** 测试用：底栏玻璃源录制容器（包住整个 tab pager）。 */
+const val MAIN_TABS_GLASS_SOURCE_TAG = "main_tabs_glass_source"
+
+/** 测试用：第 [pageIndex] 个 tab 页容器。 */
+fun mainTabPageTag(pageIndex: Int): String = "main_tab_page_$pageIndex"
 
 @Composable
 private fun MyCollectionsTopLevelPage(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
-    collectionDirectBrowseEnabled: Boolean,
     isActive: Boolean,
 ) {
     val account = rememberAccountSettingsAccountState().value
-    if (collectionDirectBrowseEnabled) {
-        CollectionBrowseScreen(
-            urlToken = account.urlToken,
-            contentPadding = innerPadding,
-            showBackButton = false,
-            scrollToTopTrigger = scrollToTopTrigger,
-            isActive = isActive,
-        )
-    } else {
-        CollectionScreen(
-            urlToken = account.urlToken,
-            contentPadding = innerPadding,
-            showBackButton = false,
-            isActive = isActive,
-        )
-    }
+    CollectionScreen(
+        urlToken = account.urlToken,
+        contentPadding = innerPadding,
+        showBackButton = false,
+        isActive = isActive,
+    )
 }
 
 private val TopLevelDestination.openFrom: String?
@@ -1064,9 +1076,16 @@ private fun NavBackStackEntry?.readingDestinationOrNull(): NavDestination? = whe
     else -> null
 }
 
+private data class BottomBarItem(
+    val destination: TopLevelDestination,
+    val label: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+)
+
 private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
     is Account.AppearanceSettings,
-    Account.ReadingSettings,
+    Account.ThemePreview,
     is Account.RecommendSettings,
     Account.RecommendSettings.Blocklist,
     Account.RecommendSettings.BlockedFeedHistory,
@@ -1074,6 +1093,7 @@ private fun NavDestination.isAccountDetailDestination(): Boolean = when (this) {
     is Account.SystemAndUpdateSettings,
     Account.SettingsSearch,
     Account.OpenSourceLicenses,
+    Account.CrashLogs,
     Account.DeveloperSettings,
     Account.DeveloperSettings.ColorScheme,
     -> true
@@ -1114,6 +1134,9 @@ private fun NavGraphBuilder.accountSettings(
             onExit = reloadPreferences,
         )
     }
+    composable<Account.ThemePreview> {
+        ThemePreviewScreen()
+    }
     composable<Account.RecommendSettings> { entry ->
         val args = entry.toRoute<Account.RecommendSettings>()
         ContentFilterSettingsScreen(args.setting)
@@ -1126,14 +1149,14 @@ private fun NavGraphBuilder.accountSettings(
             setting = entry.toRoute<Account.SystemAndUpdateSettings>().setting,
         )
     }
-    composable<Account.ReadingSettings> {
-        ReadingSettingsScreen()
-    }
     composable<Account.SettingsSearch> {
         SettingsSearchScreen()
     }
     composable<Account.OpenSourceLicenses> {
         OpenSourceLicensesScreen()
+    }
+    composable<Account.CrashLogs> {
+        CrashLogsScreen()
     }
     composable<Account.DeveloperSettings> {
         DeveloperSettingsScreen()
@@ -1142,3 +1165,43 @@ private fun NavGraphBuilder.accountSettings(
         ColorSchemeScreen()
     }
 }
+
+
+/** 列表 → 详情：列表向左轻微视差滑开，不缩放。 */
+fun listExitTransition(): ExitTransition =
+    slideOutHorizontally(tween(300)) { -(it * LIST_PARALLAX_FRACTION).toInt() }
+
+/**
+ * 返回时列表从视差位置滑回原位。用线性曲线：预测返回会按手势进度定位到转场的对应时刻，
+ * 线性才能让页面位置和手指位置一一对应。
+ */
+fun listPopEnterTransition(): EnterTransition =
+    slideInHorizontally(tween(300, easing = LinearEasing)) { -(it * LIST_PARALLAX_FRACTION).toInt() }
+
+/** 返回时详情页向右整页滑出（线性，原因同上）。 */
+fun detailPopExitTransition(): ExitTransition =
+    slideOutHorizontally(tween(300, easing = LinearEasing)) { it }
+
+/** 详情页返回手势的回调，阅读页内部的返回拦截（如沉浸式）可以借此让手势继续驱动页面缩小。 */
+class DetailBackGesture(
+    val onProgress: (Float) -> Unit,
+    val onCancel: () -> Unit,
+    val onBack: () -> Unit,
+)
+
+/** 只有开启「预测性返回」时才有值。 */
+val LocalDetailBackGesture = staticCompositionLocalOf<DetailBackGesture?> { null }
+
+const val DETAIL_OVERLAY_TAG = "detail_overlay"
+
+/** 下层列表的视差距离（相对宽度）。 */
+const val LIST_PARALLAX_FRACTION = 0.3f
+
+/** 预测性返回：手势进度 0→1 对应详情页向右位移 0→整页宽度，不缩放。 */
+fun predictiveBackTranslationFraction(progress: Float): Float = progress.coerceIn(0f, 1f)
+
+/** 详情位移 0→1 时，下层列表从 -0.3 宽度滑回 0。 */
+fun listParallaxFraction(detailSlide: Float): Float = -LIST_PARALLAX_FRACTION * (1f - detailSlide.coerceIn(0f, 1f))
+
+/** 下层列表上的浅色遮罩，详情完全展示时最深，滑出过程中淡掉。 */
+fun listScrimAlpha(detailSlide: Float): Float = 0.18f * (1f - detailSlide.coerceIn(0f, 1f))

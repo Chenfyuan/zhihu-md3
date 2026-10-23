@@ -143,6 +143,8 @@ fun CollectionScreen(
                 }
             },
             isEnd = { useTestCollections || viewModel.isEnd },
+            loginRequired = { viewModel.loginRequired },
+            rateLimited = { viewModel.rateLimited },
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()
@@ -275,3 +277,10 @@ private const val COLLECTION_SCREEN_TITLE_TAG = "collection_screen_title"
 private const val COLLECTION_SCREEN_BACK_BUTTON_TAG = "collection_screen_back_button"
 private const val COLLECTION_SCREEN_LIST_TAG = "collection_screen_list"
 private const val COLLECTION_SCREEN_CREATE_BUTTON_TAG = "collection_screen_create_button"
+
+/** 收藏夹列表页重新变为可见时是否需要刷新：注入的本地测试数据不刷新。 */
+internal fun shouldRefreshCollectionDataOnActivation(
+    isActive: Boolean,
+    useLocalCollections: Boolean,
+    refreshOnNextActivation: Boolean = true,
+): Boolean = isActive && !useLocalCollections && refreshOnNextActivation

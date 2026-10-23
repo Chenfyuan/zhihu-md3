@@ -235,7 +235,6 @@ actual val isJvm: Boolean = true
 
 actual val isNative: Boolean = false
 
-actual val isAigcVoteSupported: Boolean = false
 
 actual val isBlocklistNlpSupported: Boolean = false
 

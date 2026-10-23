@@ -23,12 +23,19 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-const val ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
-const val ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL = "https://redenmc.com/api/zhihu/releases/latest"
-const val ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
+const val ZHIHU_MD3_GITHUB_REPO = "Chenfyuan/zhihu-md3"
+const val ZHIHU_MD3_GITHUB_URL = "https://github.com/$ZHIHU_MD3_GITHUB_REPO"
+const val ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/$ZHIHU_MD3_GITHUB_REPO/releases/latest"
+const val ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL = "https://api.github.com/repos/$ZHIHU_MD3_GITHUB_REPO/releases/tags/nightly"
+
+/** 仓库尚无 Release（或仓库不可匿名访问）时 GitHub API 返回 404，此时提示“暂无更新信息”，不当作失败。 */
+const val NO_RELEASE_INFO_MESSAGE = "暂无更新信息"
+
+class NoReleaseInfoException : Exception(NO_RELEASE_INFO_MESSAGE)
 
 @Serializable
 data class GithubRelease(
@@ -55,30 +62,28 @@ fun extractGithubReleaseNotes(body: String): String = body
 suspend fun fetchLatestZhihuRelease(
     client: HttpClient,
     githubToken: String?,
-): GithubRelease = runCatching {
-    client.get(ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL).raiseForStatus().body<GithubRelease>()
-}.getOrNull() ?: client
-    .get(ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL) {
-        githubToken?.let { token ->
-            headers {
-                append(HttpHeaders.Authorization, "Bearer $token")
-            }
-        }
-    }.raiseForStatus()
-    .body<GithubRelease>()
+): GithubRelease = fetchGithubRelease(client, ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL, githubToken)
 
 suspend fun fetchNightlyZhihuRelease(
     client: HttpClient,
     githubToken: String?,
-): GithubRelease = client
-    .get(ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL) {
+): GithubRelease = fetchGithubRelease(client, ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL, githubToken)
+
+private suspend fun fetchGithubRelease(
+    client: HttpClient,
+    url: String,
+    githubToken: String?,
+): GithubRelease {
+    val response = client.get(url) {
         githubToken?.let { token ->
             headers {
                 append(HttpHeaders.Authorization, "Bearer $token")
             }
         }
-    }.raiseForStatus()
-    .body<GithubRelease>()
+    }
+    if (response.status == HttpStatusCode.NotFound) throw NoReleaseInfoException()
+    return response.raiseForStatus().body<GithubRelease>()
+}
 
 internal data class AndroidReleaseDownloadInfo(
     val browserDownloadUrl: String,

@@ -23,7 +23,7 @@ This skill documents how to build, install, and launch the Zhihu++ Android app o
 
 # 2. Install and launch on device
 adb install -r ./app/build/outputs/apk/lite/debug/app-lite-debug.apk
-adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity
+adb shell am start -n com.sjtech.zhihu/com.github.zly2006.zhihu.MainActivity
 ```
 
 ## Detailed Workflow
@@ -69,10 +69,10 @@ Expected output: `Success`
 
 ```bash
 # Launch the main activity
-adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity
+adb shell am start -n com.sjtech.zhihu/com.github.zly2006.zhihu.MainActivity
 ```
 
-Expected output: `Starting: Intent { cmp=com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity }`
+Expected output: `Starting: Intent { cmp=com.sjtech.zhihu/com.github.zly2006.zhihu.MainActivity }`
 
 ## Login JSON Backup and Restore
 
@@ -88,7 +88,7 @@ Agents must restore account JSON manually before UI checks or real-data instrume
 
 ```bash
 mkdir -p ~/.zhihu-plus-plus/backups
-adb exec-out run-as com.github.zly2006.zhplus.lite cat files/account.json \
+adb exec-out run-as com.sjtech.zhihu cat files/account.json \
   > ~/.zhihu-plus-plus/backups/android-lite-account-$(date +%Y%m%d-%H%M%S).json
 python3 - <<'PY'
 import json, pathlib
@@ -108,9 +108,9 @@ Do not print cookie values. Only verify that the JSON parses and contains the re
 ```bash
 BACKUP=~/.zhihu-plus-plus/backups/android-lite-account-YYYYMMDD-HHMMSS.json
 adb push "$BACKUP" /data/local/tmp/zhihu-account.json
-adb shell run-as com.github.zly2006.zhplus.lite sh -c 'cp /data/local/tmp/zhihu-account.json files/account.json && chmod 600 files/account.json'
-adb shell am force-stop com.github.zly2006.zhplus.lite
-adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
+adb shell run-as com.sjtech.zhihu sh -c 'cp /data/local/tmp/zhihu-account.json files/account.json && chmod 600 files/account.json'
+adb shell am force-stop com.sjtech.zhihu
+adb shell monkey -p com.sjtech.zhihu -c android.intent.category.LAUNCHER 1
 ```
 
 If the only available source is the project-local secret file, copy it manually in the same way:
@@ -118,7 +118,7 @@ If the only available source is the project-local secret file, copy it manually 
 ```bash
 BACKUP=.secret/account.json
 adb push "$BACKUP" /data/local/tmp/zhihu-account.json
-adb shell run-as com.github.zly2006.zhplus.lite sh -c 'cp /data/local/tmp/zhihu-account.json files/account.json && chmod 600 files/account.json'
+adb shell run-as com.sjtech.zhihu sh -c 'cp /data/local/tmp/zhihu-account.json files/account.json && chmod 600 files/account.json'
 ```
 
 For real-data instrumented tests, restore `files/account.json` first, then pass `zhpp_data_mode=real`:
@@ -126,7 +126,7 @@ For real-data instrumented tests, restore `files/account.json` first, then pass 
 ```bash
 adb shell am instrument -w \
   -e zhpp_data_mode real \
-  com.github.zly2006.zhplus.lite.test/com.github.zly2006.zhihu.ZhihuInstrumentedTestRunner
+  com.sjtech.zhihu.test/com.github.zly2006.zhihu.ZhihuInstrumentedTestRunner
 ```
 
 ### Reuse Android Login for JVM/Desktop
@@ -149,12 +149,12 @@ terminal-notifier -message "需要扫码登录 JVM 端" -sound default
 The project has two build variants:
 
 1. **Lite Version** (recommended for development)
-   - Package: `com.github.zly2006.zhplus.lite`
+   - Package: `com.sjtech.zhihu`
    - APK: `./app/build/outputs/apk/lite/debug/app-lite-debug.apk`
    - Main Activity: `com.github.zly2006.zhihu.MainActivity`
 
 2. **Full Version**
-   - Package: `com.github.zly2006.zhplus`
+   - Package: `com.sjtech.zhihu.full`
    - APK: `./app/build/outputs/apk/full/debug/app-full-debug.apk`
    - Main Activity: `com.github.zly2006.zhihu.MainActivity`
 
@@ -230,13 +230,13 @@ ls -lh ./app/build/outputs/apk/lite/debug/app-lite-debug.apk
 
 **Symptom:**
 ```
-Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package com.github.zly2006.zhplus.lite signatures do not match newer version]
+Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package com.sjtech.zhihu signatures do not match newer version]
 ```
 
 **Solution:**
 ```bash
 # Uninstall existing app first
-adb uninstall com.github.zly2006.zhplus.lite
+adb uninstall com.sjtech.zhihu
 
 # Then install again
 adb install ./app/build/outputs/apk/lite/debug/app-lite-debug.apk
@@ -273,7 +273,7 @@ adb devices
 
 # Use -s flag to specify target device
 adb -s <device-id> install -r ./app/build/outputs/apk/lite/debug/app-lite-debug.apk
-adb -s <device-id> shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity
+adb -s <device-id> shell am start -n com.sjtech.zhihu/com.github.zly2006.zhihu.MainActivity
 ```
 
 ### Issue 7: App Crashes on Launch
@@ -284,14 +284,14 @@ App installs but crashes immediately after launch.
 **Solution:**
 ```bash
 # Check logcat for crash details
-adb logcat | grep -i "AndroidRuntime\|FATAL\|zhplus"
+adb logcat | grep -i "AndroidRuntime\|FATAL\|sjtech"
 
 # Or filter by app package
-adb logcat --pid=$(adb shell pidof -s com.github.zly2006.zhplus.lite)
+adb logcat --pid=$(adb shell pidof -s com.sjtech.zhihu)
 
 # Clear app data and try again
-adb shell pm clear com.github.zly2006.zhplus.lite
-adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity
+adb shell pm clear com.sjtech.zhihu
+adb shell am start -n com.sjtech.zhihu/com.github.zly2006.zhihu.MainActivity
 ```
 
 ### Issue 8: Activity Not Found
@@ -304,13 +304,13 @@ Error: Activity class {...} does not exist.
 **Solution:**
 ```bash
 # Verify package is installed
-adb shell pm list packages | grep zhplus
+adb shell pm list packages | grep sjtech
 
 # Check main activity from manifest
-adb shell dumpsys package com.github.zly2006.zhplus.lite | grep -A 1 "android.intent.action.MAIN:"
+adb shell dumpsys package com.sjtech.zhihu | grep -A 1 "android.intent.action.MAIN:"
 
 # Use correct activity name
-adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity
+adb shell am start -n com.sjtech.zhihu/com.github.zly2006.zhihu.MainActivity
 ```
 
 ## Useful ADB Commands
@@ -318,22 +318,22 @@ adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.Ma
 ### App Management
 ```bash
 # List installed packages
-adb shell pm list packages | grep zhplus
+adb shell pm list packages | grep sjtech
 
 # Get app installation path
-adb shell pm path com.github.zly2006.zhplus.lite
+adb shell pm path com.sjtech.zhihu
 
 # Clear app data
-adb shell pm clear com.github.zly2006.zhplus.lite
+adb shell pm clear com.sjtech.zhihu
 
 # Uninstall app
-adb uninstall com.github.zly2006.zhplus.lite
+adb uninstall com.sjtech.zhihu
 
 # Force stop app
-adb shell am force-stop com.github.zly2006.zhplus.lite
+adb shell am force-stop com.sjtech.zhihu
 
 # Get app info
-adb shell dumpsys package com.github.zly2006.zhplus.lite
+adb shell dumpsys package com.sjtech.zhihu
 ```
 
 ### Device Information
@@ -362,7 +362,7 @@ adb logcat
 adb logcat -s TAG_NAME
 
 # Filter logs by package
-adb logcat --pid=$(adb shell pidof -s com.github.zly2006.zhplus.lite)
+adb logcat --pid=$(adb shell pidof -s com.sjtech.zhihu)
 
 # Save logs to file
 adb logcat -d > logcat.txt
@@ -376,7 +376,7 @@ adb logcat -c
 For quick deployment after code changes:
 
 ```bash
-./gradlew assembleLiteDebug && adb install -r ./app/build/outputs/apk/lite/debug/app-lite-debug.apk && adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity
+./gradlew assembleLiteDebug && adb install -r ./app/build/outputs/apk/lite/debug/app-lite-debug.apk && adb shell am start -n com.sjtech.zhihu/com.github.zly2006.zhihu.MainActivity
 ```
 
 ## Advanced: Automatic Build and Deploy Script
@@ -392,7 +392,7 @@ echo "🔨 Building lite debug APK..."
 ./gradlew assembleLiteDebug --quiet
 
 APK_PATH="./app/build/outputs/apk/lite/debug/app-lite-debug.apk"
-PACKAGE_NAME="com.github.zly2006.zhplus.lite"
+PACKAGE_NAME="com.sjtech.zhihu"
 ACTIVITY="com.github.zly2006.zhihu.MainActivity"
 
 # Check if APK was built
@@ -453,7 +453,7 @@ When things don't work, check these in order:
 4. ✅ Is USB debugging enabled on device?
 5. ✅ Is USB debugging authorized? → Accept prompt on device
 6. ✅ Is APK built? → Check `./app/build/outputs/apk/lite/debug/`
-7. ✅ Is package name correct? → `com.github.zly2006.zhplus.lite`
+7. ✅ Is package name correct? → `com.sjtech.zhihu`
 8. ✅ Is activity name correct? → `com.github.zly2006.zhihu.MainActivity`
 9. ✅ Check logs for errors → `adb logcat`
 

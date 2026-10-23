@@ -217,6 +217,11 @@ class TopicViewModel(
         private set
     var detailErrorMessage by mutableStateOf<String?>(null)
         private set
+    var loginRequired by mutableStateOf(false)
+    var rateLimited by mutableStateOf(false)
+        private set
+    var detailLoginRequired by mutableStateOf(false)
+        private set
     private var nextUrl: String? = null
     var isEnd by mutableStateOf(false)
         private set
@@ -227,6 +232,7 @@ class TopicViewModel(
 
     suspend fun loadDetail(environment: PaginationEnvironment) {
         detailErrorMessage = null
+        detailLoginRequired = false
         runCatching {
             environment.fetchJson(
                 "https://www.zhihu.com/api/v5.1/topics/$topicId",
@@ -236,6 +242,7 @@ class TopicViewModel(
             .onFailure {
                 if (it is CancellationException) throw it
                 detailErrorMessage = it.message
+                detailLoginRequired = com.github.zly2006.zhihu.viewmodel.isLoginRequiredError(it)
             }
     }
 
@@ -247,6 +254,8 @@ class TopicViewModel(
         selectedTab = tab
         items.clear()
         errorMessage = null
+        loginRequired = false
+        rateLimited = false
         nextUrl = null
         isEnd = false
         requestGeneration++
@@ -261,6 +270,8 @@ class TopicViewModel(
         discussionSort = sort
         items.clear()
         errorMessage = null
+        loginRequired = false
+        rateLimited = false
         nextUrl = null
         isEnd = false
         requestGeneration++
@@ -275,6 +286,8 @@ class TopicViewModel(
         ideasSort = sort
         items.clear()
         errorMessage = null
+        loginRequired = false
+        rateLimited = false
         nextUrl = null
         isEnd = false
         requestGeneration++
@@ -286,6 +299,8 @@ class TopicViewModel(
         val generation = requestGeneration
         isLoading = true
         errorMessage = null
+        loginRequired = false
+        rateLimited = false
         try {
             val url = nextUrl ?: topicFeedUrl(topicId, selectedTab, discussionSort, ideasSort)
             val json = environment.fetchJson(url, "data[*].content,excerpt,target.author.badge_v2")
@@ -319,6 +334,8 @@ class TopicViewModel(
             if (error is CancellationException) throw error
             if (generation == requestGeneration) {
                 errorMessage = error.message ?: error::class.simpleName ?: "未知错误"
+                loginRequired = com.github.zly2006.zhihu.viewmodel.isLoginRequiredError(error)
+                rateLimited = com.github.zly2006.zhihu.viewmodel.isRateLimitedError(error)
             }
         } finally {
             if (generation == requestGeneration) isLoading = false
@@ -332,6 +349,8 @@ class TopicViewModel(
 
     fun retry(environment: PaginationEnvironment) {
         errorMessage = null
+        loginRequired = false
+        rateLimited = false
         loadMore(environment)
     }
 
@@ -469,6 +488,8 @@ fun TopicScreen(topic: Topic) {
             items = viewModel.items,
             onLoadMore = { viewModel.loadMore(environment) },
             isEnd = { viewModel.isEnd },
+            loginRequired = { viewModel.loginRequired },
+            rateLimited = { viewModel.rateLimited },
             key = FeedDisplayItem::stableKey,
             listState = listState,
             modifier = Modifier
@@ -491,6 +512,7 @@ fun TopicScreen(topic: Topic) {
                     TopicHeader(
                         detail = viewModel.detail,
                         detailErrorMessage = viewModel.detailErrorMessage,
+                        detailLoginRequired = viewModel.detailLoginRequired,
                         destination = topic,
                         isIntroductionExpanded = isIntroductionExpanded,
                         onIntroductionExpandedChange = { isIntroductionExpanded = it },
@@ -576,6 +598,7 @@ fun TopicScreen(topic: Topic) {
 private fun TopicHeader(
     detail: TopicDetail?,
     detailErrorMessage: String?,
+    detailLoginRequired: Boolean = false,
     destination: Topic,
     isIntroductionExpanded: Boolean,
     onIntroductionExpandedChange: (Boolean) -> Unit,
@@ -603,6 +626,7 @@ private fun TopicHeader(
                             "${detail.questionsCount} 问题",
                         ).joinToString(" · "),
                     )
+                    detailLoginRequired -> com.github.zly2006.zhihu.ui.components.LoginRequiredPrompt(message = "话题信息登录后可看")
                     detailErrorMessage != null -> TextButton(onClick = onRetryDetail) {
                         Text("话题信息加载失败：$detailErrorMessage，点击重试", color = MaterialTheme.colorScheme.error)
                     }

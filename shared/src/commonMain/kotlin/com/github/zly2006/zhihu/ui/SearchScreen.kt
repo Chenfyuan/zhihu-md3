@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.ui.components.LoginRequiredPrompt
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -97,7 +98,6 @@ import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
@@ -171,24 +171,6 @@ fun SearchScreen(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
-    val readingQueueSourceId = buildString {
-        append("search:")
-        append(search.restrictedMemberHashId)
-        append(':')
-        append(viewModel.filters.sort.name)
-        append(':')
-        append(viewModel.filters.contentType.name)
-        append(':')
-        append(viewModel.searchTab.name)
-        append(':')
-        append(viewModel.filters.timeRange.name)
-        append(':')
-        append(search.query)
-    }
-    RegisterReadingQueueSource(
-        sourceId = readingQueueSourceId,
-        items = viewModel.displayItems,
-    )
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -747,6 +729,10 @@ fun SearchScreen(
                     }
                     item {
                         when {
+                            viewModel.loginRequired -> LoginRequiredPrompt(message = "搜索结果登录后可看")
+                            viewModel.rateLimited -> com.github.zly2006.zhihu.ui.components.RateLimitedPrompt(
+                                onRetry = { viewModel.retry(paginationEnvironment) },
+                            )
                             viewModel.errorMessage != null -> {
                                 TextButton(
                                     modifier = Modifier.fillMaxWidth().testTag("search_retry_button"),
@@ -787,14 +773,28 @@ fun SearchScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                         },
-                        footer = ProgressIndicatorFooter,
+                        isEnd = { viewModel.isEnd && !viewModel.loginRequired },
+                        loginRequired = { viewModel.loginRequired },
+                        rateLimited = { viewModel.rateLimited },
+                        footer = { state ->
+                            // 其它错误：普通错误信息 + 重试；不再无限转圈。
+                            if (viewModel.errorMessage != null) {
+                                TextButton(
+                                    modifier = Modifier.fillMaxWidth().testTag("search_retry_button"),
+                                    onClick = { viewModel.retry(paginationEnvironment) },
+                                ) {
+                                    Text("加载失败：${viewModel.errorMessage}，点击重试")
+                                }
+                            } else {
+                                ProgressIndicatorFooter(state)
+                            }
+                        },
                         key = SearchEntity::id,
                     ) { result ->
                         when (result) {
                             is SearchEntity.Content -> FeedCard(
                                 item = result.item,
                                 modifier = Modifier.testTag("search_general_content_${result.id}"),
-                                readingQueueSourceId = readingQueueSourceId,
                                 menuItems = { dismissMenu ->
                                     DropdownMenuItem(
                                         text = { Text("屏蔽用户") },

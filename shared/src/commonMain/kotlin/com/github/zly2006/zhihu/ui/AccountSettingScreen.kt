@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.updater.NO_RELEASE_INFO_MESSAGE
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -88,22 +89,16 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.requestLoginNavigation
-import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.reading.isReadingPlayerSupported
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
-import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
-import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateState
-import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
 import com.github.zly2006.zhihu.util.Log
 import kotlinx.coroutines.CancellationException
 import org.jetbrains.compose.resources.painterResource
@@ -117,12 +112,8 @@ const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
 const val ACCOUNT_SETTINGS_PROFILE_HEADER_TAG = "accountSettings.profileHeader"
 const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
 const val ACCOUNT_SETTINGS_SCAN_TAG = "accountSettings.scan"
-const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
 const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
-const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
-const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
 const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
-const val ACCOUNT_SETTINGS_READING_TAG = "accountSettings.reading"
 const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
 const val ACCOUNT_SETTINGS_SEARCH_TAG = "accountSettings.search"
 const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
@@ -133,11 +124,11 @@ const val ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG = "accountSettings.identityMa
 /**
  * 账号与设置入口页。
  *
- * 已登录时顶部展示头像、昵称、重新登录和退出登录，Duo3 账号入口迁移开启后会额外展示收藏夹、关注订阅、通知和历史等快捷块；
+ * 已登录时顶部展示头像、昵称、重新登录和退出登录；
  * 未登录时只展示登录入口。下方设置区是外观、推荐过滤、系统更新、开发者选项和开源许可的统一入口，其中开发者选项通过连续点击版本号开启。
  *
- * 这个页面既可以作为底部栏 tab 展示，也可以作为主页头像弹出的账号面板内容使用，所以 [innerPadding]、[onDismissRequest] 和
- * `duo3_home_account` 相关逻辑都不能随意删除。
+ * 这个页面既可以作为底部栏 tab 展示，也可以作为主页头像弹出的账号面板内容使用，所以 [innerPadding] 和 [onDismissRequest]
+ * 相关逻辑都不能随意删除。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -159,21 +150,8 @@ fun AccountSettingScreen(
     val userMessages = rememberUserMessageSink()
     val systemUpdateState = rememberSystemUpdateState()
     val versionInfo = rememberAppVersionInfo()
-    val readingPlayerSupported = isReadingPlayerSupported
     val launchQrScanner = rememberAccountQrScanAction()
 
-    val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
-    val selectedBottomBarItemKeys = remember {
-        normalizeBottomBarSelection(
-            settings.getStringSet(
-                BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(useDuo3HomeAccount, platformBottomBarItemLimit),
-            ),
-            useDuo3HomeAccount,
-            enforceMinimumSelection = true,
-            maximumSelection = platformBottomBarItemLimit,
-        )
-    }
     var isDeveloper by remember { mutableStateOf(settings.getBoolean("developer", false)) }
     var clickTimes by remember { mutableIntStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -195,11 +173,13 @@ fun AccountSettingScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(innerPadding)
+                // 底部留白放到滚动内容里，内容才能滚到悬浮玻璃底栏下面
+                .padding(top = innerPadding.calculateTopPadding())
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
                 .pageTurnViewportWithGuide(pageTurnTarget)
                 .verticalScroll(scrollState)
-                .padding(padding),
+                .padding(padding)
+                .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
@@ -284,160 +264,32 @@ fun AccountSettingScreen(
                 }
             }
 
-            if (useDuo3HomeAccount) {
-                Row(
-                    Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 16.dp, bottom = 32.dp)
-                        .clip(RoundedCornerShape(24.dp)),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    if (data.login) {
-                        Column(
-                            Modifier
-                                .testTag(ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG)
-                                .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .clickable {
-                                    data.urlToken?.let { navigator.onNavigate(Collections(it)) }
-                                }.padding(8.dp, 16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Icon(
-                                Icons.Default.Bookmark,
-                                null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            Spacer(Modifier.height(32.dp))
+            SettingItemGroup {
+                if (data.login) {
+                    SettingItem(
+                        title = { Text("查看收藏夹") },
+                        icon = { Icon(Icons.Default.BookmarkBorder, null) },
+                        onClick = {
+                            data.urlToken?.let { navigator.onNavigate(Collections(it)) }
+                        },
+                    )
+                    SettingItem(
+                        title = { Text("查看关注订阅") },
+                        description = { Text("话题、问题、专栏和收藏夹") },
+                        icon = { Icon(Icons.Default.Groups, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG),
+                        onClick = {
+                            navigator.onNavigate(
+                                Person(
+                                    id = data.id,
+                                    urlToken = data.urlToken ?: "",
+                                    name = data.username,
+                                    jumpTo = "关注订阅",
+                                ),
                             )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "收藏夹",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                        Column(
-                            Modifier
-                                .testTag(ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG)
-                                .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .clickable {
-                                    navigator.onNavigate(
-                                        Person(
-                                            id = data.id,
-                                            urlToken = data.urlToken ?: "",
-                                            name = data.username,
-                                            jumpTo = "关注订阅",
-                                        ),
-                                    )
-                                }.padding(8.dp, 16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Icon(
-                                Icons.Default.Groups,
-                                null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "关注订阅",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                        Column(
-                            Modifier
-                                .testTag(ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG)
-                                .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .clickable {
-                                    onDismissRequest()
-                                    navigator.onNavigate(Notification)
-                                }.padding(8.dp, 16.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            BadgedBox(
-                                badge = {
-                                    if (showUnreadBadge && unreadCount > 0) {
-                                        Badge { Text(unreadCount.toString()) }
-                                    }
-                                },
-                            ) {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "通知",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                        }
-                        if (shouldShowAccountHistoryShortcut(useDuo3HomeAccount, selectedBottomBarItemKeys)) {
-                            Column(
-                                Modifier
-                                    .testTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG)
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .clickable {
-                                        onDismissRequest()
-                                        navigator.onNavigateTopLevel(OnlineHistory)
-                                    }.padding(8.dp, 16.dp),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                Icon(
-                                    Icons.Default.History,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "浏览历史",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                        }
-                    }
-                }
-            } else {
-                Spacer(Modifier.height(32.dp))
-                SettingItemGroup {
-                    if (data.login) {
-                        SettingItem(
-                            title = { Text("查看收藏夹") },
-                            icon = { Icon(Icons.Default.BookmarkBorder, null) },
-                            onClick = {
-                                data.urlToken?.let { navigator.onNavigate(Collections(it)) }
-                            },
-                        )
-                        SettingItem(
-                            title = { Text("查看关注订阅") },
-                            description = { Text("话题、问题、专栏和收藏夹") },
-                            icon = { Icon(Icons.Default.Groups, null) },
-                            modifier = Modifier.testTag(ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG),
-                            onClick = {
-                                navigator.onNavigate(
-                                    Person(
-                                        id = data.id,
-                                        urlToken = data.urlToken ?: "",
-                                        name = data.username,
-                                        jumpTo = "关注订阅",
-                                    ),
-                                )
-                            },
-                        )
-                    }
+                        },
+                    )
                 }
             }
 
@@ -494,16 +346,6 @@ fun AccountSettingScreen(
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                 )
 
-                if (readingPlayerSupported) {
-                    SettingItem(
-                        title = { Text("朗读与播放") },
-                        description = { Text("朗读内容、播放队列与条目过渡") },
-                        icon = { Icon(Icons.AutoMirrored.Filled.VolumeUp, null) },
-                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_READING_TAG),
-                        onClick = { navigator.onNavigate(Account.ReadingSettings) },
-                    )
-                }
-
                 SettingItem(
                     title = { Text("推荐系统与内容过滤") },
                     description = { Text("推荐、智能过滤、关键词屏蔽等") },
@@ -538,7 +380,12 @@ fun AccountSettingScreen(
                     userMessages.showShortMessage("发现新$versionType ${state.version}")
                 }
                 if (updateState is SystemUpdateState.Error) {
-                    userMessages.showLongMessage("检查更新失败: ${(updateState as SystemUpdateState.Error).message}")
+                    val message = (updateState as SystemUpdateState.Error).message
+                    if (message == NO_RELEASE_INFO_MESSAGE) {
+                        userMessages.showShortMessage(NO_RELEASE_INFO_MESSAGE)
+                    } else {
+                        userMessages.showLongMessage("检查更新失败: $message")
+                    }
                 }
             }
 
@@ -576,10 +423,10 @@ fun AccountSettingScreen(
                 )
                 SettingItem(
                     title = { Text("GitHub 项目地址") },
-                    description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
+                    description = { Text("https://github.com/Chenfyuan/zhihu-md3") },
                     icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
                     onClick = {
-                        openSystemUrl("https://github.com/zly2006/zhihu-plus-plus")
+                        openSystemUrl("https://github.com/Chenfyuan/zhihu-md3")
                     },
                     endAction = {
                         Icon(

@@ -53,7 +53,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.github.zly2006.zhplus"
+        applicationId = "com.sjtech.zhihu"
         minSdk = 27
         targetSdk = 35
         versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
@@ -67,12 +67,12 @@ android {
         create("full") {
             dimension = "version"
             buildConfigField("boolean", "IS_LITE", "false")
+            applicationIdSuffix = ".full"
         }
         create("lite") {
             dimension = "version"
             isDefault = true
             buildConfigField("boolean", "IS_LITE", "true")
-            applicationIdSuffix = ".lite"
 //            versionNameSuffix = "-lite"
         }
     }
@@ -85,6 +85,7 @@ android {
     testOptions {
         unitTests {
             isReturnDefaultValues = true
+            isIncludeAndroidResources = true
         }
     }
 
@@ -224,6 +225,8 @@ dependencies {
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     implementation("androidx.core:core-ktx:1.19.0")
+    // XML Theme.Material3.DayNight for window chrome (Compose owns in-app colors).
+    implementation("com.google.android.material:material:1.13.0")
     // Lifecycle (JetBrains KMP versions)
     implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:$jetbrainsLifecycleVersion")
     implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:$jetbrainsLifecycleVersion")
@@ -232,6 +235,9 @@ dependencies {
     // Navigation (JetBrains KMP version)
     //noinspection GradleDependency
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
+    // 液态玻璃底栏（与清瓣同款，Kyant0/AndroidLiquidGlass）
+    implementation("io.github.kyant0:backdrop:2.0.1")
+    implementation("io.github.kyant0:shapes:1.2.1")
 
     implementation("androidx.webkit:webkit:1.16.0")
     implementation("androidx.activity:activity-compose:1.13.0")
@@ -259,6 +265,11 @@ dependencies {
     "fullImplementation"("com.hankcs:hanlp:portable-1.8.6")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation(platform("androidx.compose:compose-bom:2026.06.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.3.0")
+    testImplementation("io.ktor:ktor-client-mock:$ktor")
     testImplementation("io.ktor:ktor-client-cio:$ktor")
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktor")
     testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")

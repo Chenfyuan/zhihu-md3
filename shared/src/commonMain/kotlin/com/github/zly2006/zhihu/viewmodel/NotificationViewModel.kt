@@ -41,6 +41,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.request
 import io.ktor.http.ContentType
 import io.ktor.http.Parameters
 import io.ktor.http.contentType
@@ -111,10 +112,14 @@ class NotificationViewModel :
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val json = environment
+            val response = environment
                 .mobileHomeFeedHttpClient()
                 .get(url.replace("http://", "https://"))
-                .jsonObject()
+            if (!response.status.isSuccess()) {
+                // 401/403 等交给 classifyAccessError 区分「登录后可看 / 请求被限制」
+                throw com.github.zly2006.zhihu.util.HttpStatusException(response.status, response.request.url, response.bodyAsText())
+            }
+            val json = response.jsonObject()
             val page = ZhihuJson.decodeJson<MobileNotificationMessageOverview>(json)
             val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
 
@@ -154,6 +159,8 @@ class NotificationViewModel :
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)
+            // 之前这里只上报不记录，页面拿不到 errorMessage / loginRequired，未登录时会一直空着
+            errorHandle(e)
         } finally {
             refreshingFirstPage = false
             isLoading = false

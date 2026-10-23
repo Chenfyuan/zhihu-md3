@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -112,6 +113,7 @@ import kotlin.time.Instant
 fun DailyScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: Dp = 0.dp,
 ) {
     val navigator = LocalNavigator.current
     val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
@@ -348,7 +350,7 @@ fun DailyScreen(
                             .fillMaxSize()
                             .pageTurnViewportWithGuide(pageTurnTarget)
                             .testTag(DAILY_SCREEN_LIST_TAG),
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp + bottomPadding),
                     ) {
                         viewModel.sections.forEach { section ->
                             // 日期分组标题。

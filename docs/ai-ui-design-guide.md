@@ -29,7 +29,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 `ZhihuMain` 是共同 UI 外壳。它读取 `ZhihuMainPreferenceState`，生成底栏项、主 pager 页、自动隐藏状态和 `NavHost` route。Android 与 Desktop 分别用平台 adapter 注入文章页、NLP 管理页、视频打开和转场。
 
-底栏项顺序固定为: 主页、关注、热榜、日报、历史、账号。实际显示由 `bottom_bar_items` 决定，并经过 `normalizeBottomBarSelection()` 兜底。`duo3_home_account` 开启后，账号入口迁到主页头像，底栏选择规则会改变；这类改动必须一起检查主页账号入口、账号页历史快捷方式和底栏启动页。
+底栏项顺序固定为: 主页、关注、热榜、日报、历史、账号。实际显示由 `bottom_bar_items` 决定，并经过 `normalizeBottomBarSelection()` 兜底。账号入口始终保留在底栏（归一化会补回 `Account`）；改动底栏规则时要一起检查底栏启动页。
 
 `startDestination` 不是 NavHost 的 start route，而是主 pager 初始页。NavHost start route 始终是 `MainTabs`。如果用户选的启动页不在底栏里，`resolveValidStartDestinationKey()` 会回落到当前可用项。
 
@@ -49,11 +49,11 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 当前主线 UI 以 Material 3 为默认实现。改共同行为时优先放在 common runtime、状态或 shared component；改视觉时先确认影响的是共享组件、单个页面还是平台 adapter，避免只改入口而漏掉复用路径。
 
-主题状态集中在 `ThemeManager` 和平台 `ThemeSettingsRuntime`。`themeMode` 控制明暗，`useDynamicColor` 控制 Material You 动态取色，`customThemeColor` 在动态取色关闭后生效，`backgroundColorLight` / `backgroundColorDark` 控制背景色，`luotianyi_color` 控制应用内浏览器工具栏色。
+主题状态集中在 `ThemeManager` 和平台 `ThemeSettingsRuntime`。`themeMode` 控制明暗，`useDynamicColor` 控制 Material You 动态取色，`customThemeColor` 在动态取色关闭后生效，`backgroundColorLight` / `backgroundColorDark` 控制背景色；应用内浏览器（Custom Tab）工具栏色由 `resolveBaseColorScheme` + `customTabToolbarColor` 按当前主题（含深浅色）自动推导，不再单独可设。
 
-信息流卡片由 `FeedCard` 读取 `showFeedThumbnail`、`feedCardStyle`、`duo3_card_appearance`、`duo3_card_layout`、`duo3_card_large_title`。改这些 key 的语义时要同时查主页、关注、热榜、历史和搜索结果等复用卡片的页面。
+信息流卡片由 `FeedCard` 读取 `showFeedThumbnail`、`feedCardStyle`。改这些 key 的语义时要同时查主页、关注、热榜、历史和搜索结果等复用卡片的页面。
 
-文章、问题详情和想法正文会根据 `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY` 在 WebView 与 Compose Markdown 之间切换；该常量当前值是 `webviewRender`。WebView 正文渲染只作为废弃路径保留，不再接受新功能；阅读体验新能力只接入 Compose Markdown 路径。Compose Markdown 路径依赖 `RenderMarkdown` 和 `SegmentedText` 的字号、行高和段间距设置。
+文章、问题详情和想法正文统一使用 Compose Markdown 渲染（WebView 正文渲染已移除；WebView 仅保留给登录/验证等网页场景）。该路径依赖 `RenderMarkdown` 和 `SegmentedText` 的字号、行高和段间距设置。
 
 ## 设置项影响图
 
@@ -68,21 +68,19 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `disableBottomSheetRoundedCorners` | 禁用 popup 圆角 | `MyModalBottomSheet` 顶部改为直角 | 默认关闭，统一影响评论等复用 popup |
 | `contentFontSize`, `contentLineHeight`, `contentBlockSpacing` | 字号、行高、段间距 | 正文字号/行高、分段文本样式和 Markdown 正文块间距 | 查 `SegmentedText` 和 Markdown 渲染路径 |
 | `showFeedThumbnail` | Feed 卡片缩略图 | 信息流卡片是否显示图 | 由复用 `FeedCard` 的页面读取 |
-| `showRefreshFab` | 刷新 FAB | 首页/列表可拖动刷新按钮显示 | 123Duo3 总开关会关闭它 |
+| `showRefreshFab` | 刷新 FAB | 首页/列表可拖动刷新按钮显示 | |
 | `feedCardStyle` | 信息流样式 | `card` 或 `divider` | 影响 FeedCard 外层布局 |
-| `webviewRender` | 使用 WebView 显示文章 | 文章、问题详情、想法正文渲染路径 | 常量名是 `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY` |
 | `webviewCustomFontName` | WebView 自定义字体 | WebView 注入字体 | 仅 WebView 路径 |
 | `webviewHardwareAcceleration` | WebView 硬件加速 | Android WebView layer type | 兼容性/性能相关 |
 | `titleAutoHide` | 自动隐藏回答标题 | 文章页顶部标题栏 | 查 `rememberArticleScreenSettingsState()` |
 | `autoHideArticleBottomBar` | 自动隐藏回答底部按钮 | 文章页底部操作栏 | 与滚动方向有关 |
-| `buttonSkipAnswer` | 显示跳转下一个回答按钮 | 文章页快速跳转按钮 | 123Duo3 总开关会关闭它 |
+| `buttonSkipAnswer` | 显示跳转下一个回答按钮 | 文章页快速跳转按钮 | |
 | `autoHideSkipAnswerButton` | 自动隐藏跳转按钮 | 跳转按钮滚动隐藏 | 仅 `buttonSkipAnswer` 开启时可见 |
 | `pinAnswerDate` | 置顶回答日期 | 回答日期位置 | 影响文章正文布局 |
 | `answerSwitchMode` | 回答切换手势 | `off` / `vertical` / `horizontal` | 会影响转场方向和手势冲突 |
 | `answerSwitchSensitivity` | 回答切换灵敏度 | 上下/左右回答切换触发阈值 | 默认 1.0，数值越高触发距离越短；关闭手势时设置项隐藏 |
 | `answerDoubleTapAction` | 双击回答动作 | 双击正文后的动作 | 可在文章页内动态保存 |
 | `bottom_bar_items` | 底栏页面选择 | 主 pager 页集合和底栏按钮 | 始终经 `normalizeBottomBarSelection()` |
-| `collectionDirectBrowse` | 收藏直达浏览（测试） | 底栏收藏夹进入内容瀑布流，支持切换、删除、刷新及随机排序 | 默认关闭，关闭时保留原收藏夹列表入口 |
 
 ### 收藏直达浏览测试功能边界
 
@@ -125,29 +123,11 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `githubToken` | GitHub Token | 更新检查 API 限速 | 不要打印或提交真实 token |
 | `checkNightlyUpdates` | Nightly 更新 | 是否检查每日构建 | Android updater 和 Desktop runtime 都读 |
 | `allowTelemetry` | 遥测统计 | 匿名使用统计 | 不影响核心功能 |
-| `continuousUsageReminderIntervalMinutes` | 防沉迷提醒 | 连续使用提醒间隔 | 0 表示关闭 |
 | `developer` | 开发者模式 | 账号页显示开发者选项 | 账号页点击版本 5 次开启 |
 | `enableScrollEndHaptic` | 开发者选项: 滚动到底震动 | 滚动边界反馈行为开关 | 改前查具体 overScroll 使用点 |
 | `showDebugOverlay` | 开发者选项: 调试悬浮窗 | 调试 Feed 详情显示 | 如果 `rg` 只命中设置页，先补运行时读取点 |
 | `zse96_key` | 开发者签名请求 | 调试签名相关请求 | 只在开发者页处理 |
 | NotificationSettingsStore | 通知设置 | 系统通知、应用内显示、自动已读、未读红点 | 不走普通 `SettingsStore` key 命名 |
-
-## 123Duo3 UI/UX 开关
-
-`duo3_all` 是批量开关。开启时会写入 `duo3_home_account`、`duo3_card_appearance`、`duo3_card_layout`、`duo3_article_bar`、`duo3_article_actions`，并关闭 `showRefreshFab` 和 `buttonSkipAnswer`。底部导航栏统一使用 Material 样式，不再提供单独开关。
-
-各子开关影响:
-
-| key | 影响 |
-| --- | --- |
-| `duo3_home_account` | 主页头像承接账号入口，底栏账号项规则变化，账号页可能显示历史快捷方式 |
-| `duo3_card_appearance` | Feed 卡片圆角、背景和阴影变化 |
-| `duo3_card_layout` | Feed 卡片作者、图片、摘要行数和字体排版变化 |
-| `duo3_card_large_title` | `duo3_card_layout` 开启后控制标题字号 |
-| `duo3_article_bar` | 文章页顶/底栏框架开关；若 `rg` 只命中设置页，不要声称已有运行时效果 |
-| `duo3_article_actions` | 文章页底部操作按钮样式变化 |
-
-改任意 Duo3 开关时，至少检查 `AppearanceSettingsScreen`、`ZhihuMain`、`HomeScreen`、`AccountSettingScreen`、`FeedCard` 和 `ArticleScreen`。
 
 ## 新增 UI 的检查清单
 
@@ -169,3 +149,4 @@ rg "Account\\.AppearanceSettings|Account\\.RecommendSettings|NavDestination|Main
 rg "rememberSettingsStore|putBoolean|putString|putInt|getBoolean|getString|getInt" shared app
 rg "testTag\\(|nav_tab_|ACCOUNT_SETTINGS_|APPEARANCE_SETTINGS_" shared app
 ```
+

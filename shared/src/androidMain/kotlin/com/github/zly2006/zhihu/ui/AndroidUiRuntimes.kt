@@ -48,15 +48,6 @@ import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
-import com.github.zly2006.zhihu.reading.ContentReadingService
-import com.github.zly2006.zhihu.reading.ReadingContentType
-import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
-import com.github.zly2006.zhihu.reading.ReadingPreferences
-import com.github.zly2006.zhihu.reading.ReadingQueueItem
-import com.github.zly2006.zhihu.reading.ReadingStartRequest
-import com.github.zly2006.zhihu.reading.ReadingTemplateField
-import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.ui.article.prepareContentDocument
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -96,70 +87,6 @@ private fun Context.zhihuVersionInfo(): String {
 }
 
 @Composable
-actual fun rememberArticleTtsState(): TtsState {
-    val state by AndroidReadingPlayerBridge.state.collectAsState()
-    return when (state.status) {
-        ReadingPlaybackStatus.Idle -> TtsState.Ready
-        ReadingPlaybackStatus.Initializing -> TtsState.Initializing
-        ReadingPlaybackStatus.Loading -> TtsState.LoadingText
-        ReadingPlaybackStatus.Playing -> TtsState.Speaking
-        ReadingPlaybackStatus.Paused -> TtsState.Paused
-        ReadingPlaybackStatus.Error -> TtsState.Error
-    }
-}
-
-@Composable
-actual fun rememberArticleSpeechToggler(): ArticleSpeechToggler {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val userMessages = rememberUserMessageSink()
-    val ttsState = rememberArticleTtsState()
-    return remember(context, coroutineScope, userMessages, ttsState) {
-        object : ArticleSpeechToggler {
-            override fun invoke(title: String, content: String) {
-                if (ttsState.isSpeaking) {
-                    context.startService(ContentReadingService.commandIntent(context, ContentReadingService.ACTION_STOP))
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    coroutineScope.launch {
-                        try {
-                            withContext(Dispatchers.IO) {
-                                val textToRead = articleSpeechText(title, content)
-                                withContext(Dispatchers.Main) {
-                                    if (textToRead.isNotBlank()) {
-                                        AndroidReadingPlayerBridge.start(
-                                            context,
-                                            ReadingStartRequest(
-                                                queue = listOf(
-                                                    ReadingQueueItem(
-                                                        contentType = ReadingContentType.Article,
-                                                        id = title.hashCode().toLong() and 0xffffffffL,
-                                                        title = title,
-                                                        bodyHtml = textToRead,
-                                                    ),
-                                                ),
-                                                preferences = ReadingPreferences(
-                                                    fieldOrder = listOf(ReadingTemplateField.Body),
-                                                    enabledFields = setOf(ReadingTemplateField.Body),
-                                                    queueLimit = 1,
-                                                    transitionText = "",
-                                                ),
-                                                playbackSpeed = loadReadingPlaybackSpeed(androidSettingsStore(context)),
-                                            ),
-                                        )
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            userMessages.showMessage("朗读失败：${e.message}")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
     val context = LocalContext.current.applicationContext
     val coroutineScope = rememberCoroutineScope()
@@ -178,45 +105,6 @@ actual fun rememberArticleBrowserOpener(): ArticleBrowserOpener {
 
 @Composable
 actual fun consumePendingCommentId(content: com.github.zly2006.zhihu.navigation.NavDestination): String? = remember(content) { AndroidArticleNavigationHandoff.consumeCommentId(content) }
-
-@Composable
-actual fun ArticleWebViewContent(
-    article: Article,
-    html: String,
-    title: String,
-    scrollState: ScrollState,
-    rememberedScrollY: Int,
-    rememberedScrollYSync: Boolean,
-    onRememberedScrollYSyncChange: (Boolean) -> Unit,
-    onImageLoadFailed: () -> Unit,
-    onDoubleTap: () -> Unit,
-) {
-    val coroutineScope = rememberCoroutineScope()
-    WebviewComp(
-        onDoubleTap = onDoubleTap,
-        scrollState = scrollState,
-    ) {
-        it.isVerticalScrollBarEnabled = false
-        it.setupUpWebviewClient {
-            if (!rememberedScrollYSync) {
-                coroutineScope.launch {
-                    while (scrollState.maxValue < rememberedScrollY) {
-                        delay(100)
-                    }
-                    Log.i("zhihu-scroll", "scroll to $rememberedScrollY, max= ${scrollState.maxValue}, sync on")
-                    scrollState.animateScrollTo(rememberedScrollY)
-                    onRememberedScrollYSyncChange(true)
-                }
-            }
-        }
-        it.contentId = article.id.toString()
-        it.loadZhihu(
-            "https://www.zhihu.com/${article.type}/${article.id}",
-            prepareContentDocument(html, onImageLoadFailed),
-            title,
-        )
-    }
-}
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
 
@@ -310,20 +198,6 @@ actual fun rememberBlocklistRuleExporter(): BlocklistRuleExporter {
 }
 
 @Composable
-actual fun ZhihuHtmlWebViewContent(html: String) {
-    WebviewComp {
-        it.isVerticalScrollBarEnabled = false
-        it.setupUpWebviewClient()
-        it.loadZhihu(
-            "https://www.zhihu.com",
-            Jsoup.parse(html),
-        )
-    }
-}
-
-actual val isLegacyWebViewSupported: Boolean = true
-
-@Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
     remember(emojiKeys) { createEmojiInlineContent(emojiKeys) }
 
@@ -395,19 +269,6 @@ object AndroidArticleNavigationHandoff {
         if (identity != pendingContentIdentity) return ContentOpenFrom.UNKNOWN
         pendingContentIdentity = null
         return pendingContentOpenFrom.also { pendingContentOpenFrom = null } ?: ContentOpenFrom.UNKNOWN
-    }
-}
-
-@Composable
-actual fun QuestionDetailWebViewContent(
-    questionId: Long,
-    html: String,
-) {
-    WebviewComp {
-        it.loadZhihu(
-            "https://www.zhihu.com/question/$questionId",
-            Jsoup.parse(html),
-        )
     }
 }
 

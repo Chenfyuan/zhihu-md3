@@ -59,9 +59,16 @@ suspend fun executeZhihuAuthenticatedRequest(
     if (Clock.System.now().toEpochMilliseconds() - lastRefreshMillis < 10_000) {
         return response
     }
-    val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
-    ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
     lastRefreshMillis = Clock.System.now().toEpochMilliseconds()
+    // 未登录时没有可刷新的凭证：刷新失败就把原始 401 交给调用方（显示「登录后可看」），不要抛出无关异常。
+    val refreshed = runCatching {
+        val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
+        ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+    }
+    if (refreshed.isFailure) {
+        if (refreshed.exceptionOrNull() is kotlin.coroutines.cancellation.CancellationException) throw refreshed.exceptionOrNull()!!
+        return response
+    }
     return client
         .request(url) {
             block()
@@ -80,6 +87,12 @@ suspend fun fetchZhihuAuthenticatedJson(
     )
     if (response.status == HttpStatusCode.NoContent) {
         return null
+    }
+    // 知乎对匿名请求返回 401/403（如搜索 403 + {"error":{"code":40353,"need_login":true,"redirect":"/account/unhuman..."}}）。
+    // 以前这里把错误体当正常 JSON 返回，上层只能报「没有 data」，界面一直转圈；现在抛出 HttpStatusException，
+    // 由 PaginationViewModel 识别为 loginRequired。redirect 只是响应体字段，不跟随、不做任何绕过。
+    if (response.status == HttpStatusCode.Unauthorized || response.status == HttpStatusCode.Forbidden) {
+        response.raiseForStatus()
     }
     return response.json() as? JsonObject
 }

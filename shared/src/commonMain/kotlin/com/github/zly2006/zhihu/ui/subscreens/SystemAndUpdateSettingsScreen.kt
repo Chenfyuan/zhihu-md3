@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
+import com.github.zly2006.zhihu.updater.NO_RELEASE_INFO_MESSAGE
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,7 +28,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -37,11 +37,7 @@ import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -57,7 +53,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,7 +68,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
@@ -83,23 +78,16 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
-import zhihu.shared.generated.resources.Res
-import zhihu.shared.generated.resources.ic_discord_24dp
-import zhihu.shared.generated.resources.ic_github_24dp
-import zhihu.shared.generated.resources.ic_telegram_24dp
 
-internal const val CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY = "continuousUsageReminderIntervalMinutes"
 internal const val MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY = "macosQuitOnWindowClose"
-const val SYSTEM_SETTINGS_AIGC_MARKING_TAG = "system_settings_aigc_marking"
+const val SYSTEM_SETTINGS_CRASH_LOGS_TAG = "system_settings_crash_logs"
 
 /**
  * 系统、更新和外部服务设置页。
  *
- * 页面展示更新横幅、下载/安装/跳过版本操作、GitHub Token、Nightly、遥测、防沉迷提醒和社区链接。
- * 更新相关状态与动作由细粒度平台能力提供，防沉迷间隔写入 [CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY]，
+ * 页面展示更新横幅、下载/安装/跳过版本操作、GitHub Token和 Nightly。
+ * 更新相关状态与动作由细粒度平台能力提供，
  * 改动时要同时考虑 Android 更新管理器和 Desktop 运行时。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -206,12 +194,12 @@ fun SystemAndUpdateSettingsScreen(
                                     SelectionContainer {
                                         Text(
                                             buildAnnotatedString {
-                                                val prRegex = Regex("https://github.com/zly2006/zhihu-plus-plus/pull/(\\d+)")
+                                                val prRegex = Regex("https://github.com/Chenfyuan/zhihu-md3/pull/(\\d+)")
                                                 var lastIndex = 0
                                                 prRegex.findAll(releaseNotes!!).forEach { matchResult ->
                                                     append(releaseNotes!!.substring(lastIndex, matchResult.range.first))
                                                     val prNumber = matchResult.groupValues[1]
-                                                    withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/pull/$prNumber")) {
+                                                    withLink(LinkAnnotation.Url("https://github.com/Chenfyuan/zhihu-md3/pull/$prNumber")) {
                                                         withStyle(
                                                             MaterialTheme.typography.bodyMedium
                                                                 .copy(color = MaterialTheme.colorScheme.primary)
@@ -230,7 +218,7 @@ fun SystemAndUpdateSettingsScreen(
                                     }
                                     Spacer(modifier = Modifier.height(12.dp))
                                     TextButton(
-                                        onClick = { openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/releases") },
+                                        onClick = { openExternalUrl("https://github.com/Chenfyuan/zhihu-md3/releases") },
                                         modifier = Modifier.align(Alignment.End),
                                     ) {
                                         Text("查看完整更新日志")
@@ -380,36 +368,12 @@ fun SystemAndUpdateSettingsScreen(
                     highlightedKey = highlightedSetting,
                 )
 
-                var allowTelemetry by remember { mutableStateOf(settings.getBoolean("allowTelemetry", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("允许发送遥测统计数据") },
-                    description = { Text("仅用于统计使用人数，不包含个人隐私") },
-                    checked = allowTelemetry,
-                    onCheckedChange = {
-                        allowTelemetry = it
-                        settings.putBoolean("allowTelemetry", it)
-                    },
-                    settingKey = "allowTelemetry",
-                    highlightedKey = highlightedSetting,
-                )
-
-                var aigcMarkingEnabled by remember {
-                    mutableStateOf(settings.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false))
-                }
-                SettingItemWithSwitch(
-                    modifier = Modifier.testTag(SYSTEM_SETTINGS_AIGC_MARKING_TAG),
-                    title = { Text("启用 AIGC 标记") },
-                    description = {
-                        Text(
-                            "如果启用，会把你正在浏览的内容发送到我们的服务器，这样你可以知道其他用户是否认为其疑似 AIGC。默认关闭，不会发送隐私信息。",
-                        )
-                    },
-                    checked = aigcMarkingEnabled,
-                    onCheckedChange = {
-                        aigcMarkingEnabled = it
-                        settings.putBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, it)
-                    },
-                    settingKey = AIGC_MARKING_ENABLED_PREFERENCE_KEY,
+                SettingItem(
+                    modifier = Modifier.testTag(SYSTEM_SETTINGS_CRASH_LOGS_TAG),
+                    title = { Text("崩溃日志") },
+                    description = { Text("查看、分享或清除本机保存的崩溃记录。只存在手机里，不会上传。") },
+                    onClick = { navigator.onNavigate(Account.CrashLogs) },
+                    settingKey = "crashLogs",
                     highlightedKey = highlightedSetting,
                 )
             }
@@ -439,124 +403,12 @@ fun SystemAndUpdateSettingsScreen(
                             is SystemUpdateState.NoUpdate -> "检查更新"
                             is SystemUpdateState.Checking -> "检查中..."
                             is SystemUpdateState.Latest -> "已经是最新版本"
-                            is SystemUpdateState.Error -> "检查更新失败，点击重试"
+                            is SystemUpdateState.Error -> if ((updateState as SystemUpdateState.Error).message == NO_RELEASE_INFO_MESSAGE) NO_RELEASE_INFO_MESSAGE else "检查更新失败，点击重试"
                             else -> ""
                         },
                         Modifier.padding(0.dp, 4.dp),
                     )
                 }
-            }
-
-            var reminderExpanded by remember { mutableStateOf(false) }
-            var reminderIntervalMinutes by remember {
-                mutableIntStateOf(
-                    ContinuousUsageReminderPolicy.normalizeIntervalMinutes(
-                        settings.getInt(
-                            CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY,
-                            0,
-                        ),
-                    ),
-                )
-            }
-            val reminderOptions = listOf(
-                0 to "关闭",
-                15 to "每 15 分钟",
-                30 to "每 30 分钟",
-                60 to "每 1 小时",
-            )
-
-            SettingItemGroup(
-                title = "防沉迷",
-            ) {
-                SettingItem(
-                    title = { Text("防沉迷提醒") },
-                    description = { Text("你已经连续浏览知乎 N 小时 M 分钟了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。") },
-                    settingKey = CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY,
-                    highlightedKey = highlightedSetting,
-                    endAction = {
-                        ExposedDropdownMenuBox(
-                            expanded = reminderExpanded,
-                            onExpandedChange = { reminderExpanded = it },
-                        ) {
-                            OutlinedTextField(
-                                value = reminderOptions
-                                    .find { it.first == reminderIntervalMinutes }
-                                    ?.second ?: "关闭",
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = reminderExpanded)
-                                },
-                                modifier = Modifier
-                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                    .width(160.dp),
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                            )
-                            ExposedDropdownMenu(
-                                expanded = reminderExpanded,
-                                onDismissRequest = { reminderExpanded = false },
-                            ) {
-                                reminderOptions.forEach { (minutes, label) ->
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            reminderIntervalMinutes = minutes
-                                            settings.putInt(CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, minutes)
-                                            reminderExpanded = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    },
-                )
-            }
-
-            SettingItemGroup(
-                title = "交流 & 闲聊",
-                footer = { Text("代码和功能反馈请前往GitHub。上边的频道用于用户交流和闲聊，开发者不一定会在线回答问题。") },
-            ) {
-                SettingItem(
-                    title = { Text("Discord 频道") },
-                    description = { Text("请在 my-other-apps/zhihu-plus-plus 频道讨论") },
-                    icon = { Icon(painterResource(Res.drawable.ic_discord_24dp), null) },
-                    endAction = {
-                        Icon(
-                            Icons.Default.ArrowOutward,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    onClick = { openExternalUrl("https://discord.gg/YCPFZV5XSA") },
-                )
-
-                SettingItem(
-                    title = { Text("Telegram 群组 (Hydrogen)") },
-                    description = { Text("另一个知乎客户端 Hydrogen 的群组，也可以在里面讨论知乎++哦") },
-                    icon = { Icon(painterResource(Res.drawable.ic_telegram_24dp), null) },
-                    endAction = {
-                        Icon(
-                            Icons.Default.ArrowOutward,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    onClick = { openExternalUrl("https://t.me/+_A1Yto6EpyIyODA1") },
-                )
-
-                SettingItem(
-                    title = { Text("Github issue") },
-                    description = { Text("欢迎提交 issue 讨论功能和反馈问题") },
-                    icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
-                    endAction = {
-                        Icon(
-                            Icons.Default.ArrowOutward,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    onClick = { openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/issues") },
-                )
             }
         }
     }

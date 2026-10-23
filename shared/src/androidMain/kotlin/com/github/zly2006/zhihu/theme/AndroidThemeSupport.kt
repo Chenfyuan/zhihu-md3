@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.theme
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.Color as AndroidColor
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
@@ -97,6 +98,13 @@ actual fun PlatformSystemBarEffect(darkTheme: Boolean) {
     if (view.isInEditMode) return
     SideEffect {
         val window = (view.context as? Activity)?.window ?: return@SideEffect
+        // Edge-to-edge: keep system bars transparent; Compose draws behind them.
+        window.statusBarColor = AndroidColor.TRANSPARENT
+        window.navigationBarColor = AndroidColor.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
         WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = !darkTheme
             isAppearanceLightNavigationBars = !darkTheme

@@ -67,7 +67,7 @@ import zhihu.shared.generated.resources.ic_vote_up_24dp
 /** 渲染水平回答切换时的缓存内容预览。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown: Boolean) {
+internal fun CachedAnswerPreview(cached: CachedAnswerContent) {
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
@@ -208,7 +208,6 @@ internal fun CachedAnswerPreview(cached: CachedAnswerContent, useTiqianMarkdown:
                     html = cached.content,
                     modifier = Modifier,
                     selectable = true,
-                    useTiqianRenderer = useTiqianMarkdown,
                     enableScroll = false,
                     header = {},
                     footer = {},

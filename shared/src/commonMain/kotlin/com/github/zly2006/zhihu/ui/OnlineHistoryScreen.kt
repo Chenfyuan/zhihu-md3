@@ -17,6 +17,9 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -47,7 +50,6 @@ import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -73,16 +75,10 @@ const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 fun OnlineHistoryScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    bottomPadding: Dp = 0.dp,
 ) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel { OnlineHistoryViewModel() }
-    val readingQueueSourceId = "history:online"
-    if (isActive) {
-        RegisterReadingQueueSource(
-            sourceId = readingQueueSourceId,
-            items = viewModel.displayItems,
-        )
-    }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
@@ -193,15 +189,17 @@ fun OnlineHistoryScreen(
                     .padding(innerPadding)
                     .pageTurnViewportWithGuide(pageTurnTarget)
                     .testTag("online_history_list"),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 items = viewModel.displayItems,
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
+                loginRequired = { viewModel.loginRequired },
+                rateLimited = { viewModel.rateLimited },
                 key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(
                     item,
-                    readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     menuItems = { dismissMenu ->
                         DropdownMenuItem(
                             text = { Text("删除该条历史记录") },

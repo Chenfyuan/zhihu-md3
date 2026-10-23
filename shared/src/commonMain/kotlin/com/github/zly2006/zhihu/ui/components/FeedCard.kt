@@ -79,7 +79,6 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
-import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -92,18 +91,16 @@ import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 /**
  * 信息流卡片的 Material 3 实现。
  *
- * 卡片负责展示标题、摘要、作者、徽章、缩略图和更多菜单，并根据设置支持卡片/分割线两种外观、Duo3 排版和缩略图开关。
+ * 卡片负责展示标题、摘要、作者、徽章、缩略图和更多菜单，并根据设置支持卡片/分割线两种外观和缩略图开关。
  * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；页面可以通过 [menuItems] 直接声明自己的业务菜单项。
  *
- * 修改这个组件时要同步复核 `showFeedThumbnail`、`feedCardStyle`、`duo3_card_appearance`、
- * `duo3_card_layout` 和 `duo3_card_large_title` 对各信息流入口的影响。
+ * 修改这个组件时要同步复核 `showFeedThumbnail` 和 `feedCardStyle` 对各信息流入口的影响。
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedCard(
     item: FeedDisplayItem,
     modifier: Modifier = Modifier,
-    readingQueueSourceId: String? = null,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
@@ -126,9 +123,6 @@ fun FeedCard(
     val feedCardStyle = remember {
         settings.getString("feedCardStyle", "divider")
     }
-    val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
-    val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
-    val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
     val pinImages = (item.feed?.target as? Feed.PinTarget)
         ?.content
         ?.filterIsInstance<DataHolder.Pin.ContentImage>()
@@ -137,7 +131,7 @@ fun FeedCard(
     val isSelected = item.navDestination != null && item.navDestination == selectedDestination
     val selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
     val performClick: (FeedDisplayItem) -> Unit = { clickedItem ->
-        val destination = clickedItem.navDestination?.withReadingQueueSource(readingQueueSourceId)
+        val destination = clickedItem.navDestination
         if (onClick != null) {
             onClick(clickedItem, destination)
         } else {
@@ -156,7 +150,7 @@ fun FeedCard(
                 .fillMaxWidth()
                 .semantics { selected = isSelected }
                 .then(if (isSelected) Modifier.background(selectedContainerColor) else Modifier)
-                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight)),
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
                 modifier = Modifier
@@ -172,8 +166,6 @@ fun FeedCard(
                     showMenu = showMenu,
                     onShowMenuChange = { showMenu = it },
                     menuItems = menuItems,
-                    duo3CardLayout = duo3CardLayout,
-                    duo3CardLargeTitle = duo3CardLargeTitle,
                     showSourceLabel = showSourceLabel,
                 )
             }
@@ -184,36 +176,23 @@ fun FeedCard(
             modifier = modifier
                 .fillMaxWidth()
                 .semantics { selected = isSelected }
-                .then(if (showPinImages || duo3CardLayout) Modifier else Modifier.heightIn(max = maxHeight))
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
                 colors = if (isSelected) {
                     CardDefaults.cardColors(containerColor = selectedContainerColor)
-                } else if (duo3CardAppearance) {
-                    CardDefaults.cardColors().copy(
-                        containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    )
                 } else {
                     CardDefaults.cardColors()
                 },
-                shape = if (duo3CardAppearance) RoundedCornerShape(24.dp) else CardDefaults.shape,
+                shape = CardDefaults.shape,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .let { if (duo3CardAppearance) it.clip(RoundedCornerShape(24.dp)) else it }
                     .clickable { performClick(item) },
-                elevation = if (duo3CardAppearance) {
-                    CardDefaults.cardElevation()
-                } else {
-                    CardDefaults.cardElevation(defaultElevation = 2.dp)
-                },
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
                 Column(
-                    modifier = if (duo3CardAppearance) {
-                        Modifier.padding(16.dp, 12.dp, 16.dp, 16.dp)
-                    } else {
-                        Modifier.padding(8.dp)
-                    },
+                    modifier = Modifier.padding(8.dp),
                 ) {
                     FeedCardContent(
                         item = item,
@@ -223,8 +202,6 @@ fun FeedCard(
                         showMenu = showMenu,
                         onShowMenuChange = { showMenu = it },
                         menuItems = menuItems,
-                        duo3CardLayout = duo3CardLayout,
-                        duo3CardLargeTitle = duo3CardLargeTitle,
                         showSourceLabel = showSourceLabel,
                     )
                 }
@@ -286,8 +263,7 @@ private fun FeedCardMenuBox(
 /**
  * 信息流卡片正文内容。
  *
- * 这里决定标题、摘要、缩略图、作者信息和操作菜单在卡片内的排列方式。标准排版强调兼容既有 Material 3 卡片，
- * Duo3 排版则把作者移到底部、调整图片和摘要结构，并可使用更大的标题字号。
+ * 这里决定标题、摘要、缩略图、作者信息和操作菜单在卡片内的排列方式。标准排版强调兼容既有 Material 3 卡片。
  */
 @Composable
 private fun FeedCardContent(
@@ -298,8 +274,6 @@ private fun FeedCardContent(
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
     menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit,
-    duo3CardLayout: Boolean,
-    duo3CardLargeTitle: Boolean,
     showSourceLabel: Boolean,
 ) {
     val settings = rememberSettingsStore()
@@ -308,211 +282,93 @@ private fun FeedCardContent(
     val navigator = LocalNavigator.current
     val visiblePinImages = pinImages.takeIf { showFeedThumbnail && !item.isFiltered }.orEmpty()
     val sourceLabel = item.feed?.sourceLabel.takeUnless { item.isFiltered }
-    if (duo3CardLayout) {
-        // ── 新排版（duo3）────────────────────────────────────────────────────
-        if (showSourceLabel) {
-            FeedCardSourceLabel(sourceLabel)
+    // ── 原始排版（master）────────────────────────────────────────────────
+    if (showSourceLabel) {
+        FeedCardSourceLabel(sourceLabel)
+    }
+    if (!item.title.isEmpty() && !item.isFiltered) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = parseEmphasizedHtmlTextWithTheme(item.title),
+                fontSize = 16.sp * fontSizePercent / 100,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        if (!item.title.isEmpty()) {
-            val titleStyle = if (duo3CardLargeTitle) {
-                MaterialTheme.typography.titleLarge
-            } else {
-                MaterialTheme.typography.titleMedium
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = parseEmphasizedHtmlTextWithTheme(item.title),
-                    style = titleStyle.copy(
-                        fontSize = titleStyle.fontSize * fontSizePercent / 100,
-                        lineHeight = titleStyle.lineHeight * fontSizePercent / 100,
-                    ),
-                    maxLines = 2,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
+    }
+    val avatarSrc = item.avatarSrc
+    val authorName = item.authorName
+    if (avatarSrc != null && authorName != null) {
+        Spacer(Modifier.height(4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable {},
+        ) {
+            AsyncImage(
+                model = avatarSrc,
+                contentDescription = "Avatar",
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .size(20.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = authorName,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            val authorBadge = item.authorBadgeV2.officialBadge()
+            if (authorBadge?.isUsefulInList == true) {
+                Spacer(Modifier.width(4.dp))
+                AuthorBadge(authorBadge, compact = true)
             }
         }
-
-        Column {
-            Row {
-                Text(
-                    text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp * fontSizePercent / 100,
-                        lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    AsyncImage(
-                        model = thumbnailUrl,
-                        contentDescription = "Thumbnail",
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .sizeIn(maxHeight = 80.dp, maxWidth = 128.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.FillHeight,
-                    )
-                }
-            }
+    }
+    Row {
+        Column(modifier = Modifier.weight(2f)) {
+            Text(
+                text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 14.sp * fontSizePercent / 100,
+                lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
+            )
             PinFeedImages(
                 images = visiblePinImages,
                 modifier = Modifier.padding(top = 8.dp),
             )
-            if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
+            if (item.details.isNotEmpty()) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
+                    Text(
+                        text = item.details,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val avatarSrc = item.avatarSrc
-                        val authorName = item.authorName
-                        if (avatarSrc != null && authorName != null) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .weight(1f, fill = false)
-                                    .clickable {},
-                            ) {
-                                AsyncImage(
-                                    model = avatarSrc,
-                                    contentDescription = "Avatar",
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .size(24.dp),
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    text = authorName,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
-                                val authorBadge = item.authorBadgeV2.officialBadge()
-                                if (authorBadge?.isUsefulInList == true) {
-                                    Spacer(Modifier.width(4.dp))
-                                    AuthorBadge(authorBadge, compact = true)
-                                }
-                            }
-                            Spacer(Modifier.width(6.dp))
-                        }
-                        if (item.details.isNotEmpty()) {
-                            Text(
-                                text = item.details,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                    if (item.details.isNotEmpty()) {
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
-                    }
+                    )
+                    FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
                 }
             }
         }
-    } else {
-        // ── 原始排版（master）────────────────────────────────────────────────
-        if (showSourceLabel) {
-            FeedCardSourceLabel(sourceLabel)
-        }
-        if (!item.title.isEmpty() && !item.isFiltered) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = parseEmphasizedHtmlTextWithTheme(item.title),
-                    fontSize = 16.sp * fontSizePercent / 100,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        val avatarSrc = item.avatarSrc
-        val authorName = item.authorName
-        if (avatarSrc != null && authorName != null) {
-            Spacer(Modifier.height(4.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable {},
-            ) {
-                AsyncImage(
-                    model = avatarSrc,
-                    contentDescription = "Avatar",
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .size(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = authorName,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                val authorBadge = item.authorBadgeV2.officialBadge()
-                if (authorBadge?.isUsefulInList == true) {
-                    Spacer(Modifier.width(4.dp))
-                    AuthorBadge(authorBadge, compact = true)
-                }
-            }
-        }
-        Row {
-            Column(modifier = Modifier.weight(2f)) {
-                Text(
-                    text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
-                    fontSize = 14.sp * fontSizePercent / 100,
-                    lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
-                )
-                PinFeedImages(
-                    images = visiblePinImages,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                if (item.details.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = item.details,
-                            fontSize = 12.sp,
-                            lineHeight = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
-                        )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
-                    }
-                }
-            }
-            if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
-                Spacer(modifier = Modifier.width(8.dp))
-                AsyncImage(
-                    model = thumbnailUrl,
-                    contentDescription = "Thumbnail",
-                    modifier = Modifier
-                        .weight(1f)
-                        .sizeIn(maxWidth = 60.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                )
-            }
+        if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
+            Spacer(modifier = Modifier.width(8.dp))
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = "Thumbnail",
+                modifier = Modifier
+                    .weight(1f)
+                    .sizeIn(maxWidth = 60.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+            )
         }
     }
 }
@@ -625,7 +481,7 @@ private fun PinFeedImage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f)),
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

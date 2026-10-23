@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,8 +35,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,13 +63,11 @@ import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.platform.isSentenceSimilaritySupported
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX
-import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
@@ -164,7 +159,6 @@ fun DeveloperSettingsScreen() {
                 Column {
                     Text(runtimeInfo.networkStatus)
                     runtimeInfo.powerSaveModeText?.let { Text(it) }
-                    Text("连续使用时长：${formatContinuousUsageDuration(runtimeInfo.continuousUsageDurationMs)}")
 
                     Spacer(Modifier.height(16.dp))
                 }
@@ -208,93 +202,9 @@ fun DeveloperSettingsScreen() {
                 ) { Text("Color Scheme") }
 
                 Button(onClick = {
-                    settings.remove(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY)
                     settings.removeByPrefix(HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX)
-                    userMessages.showShortMessage("已清除 online notification 和作者想法推送的已读记录")
-                }) { Text("清除所有 online notification 和作者想法推送已读记录") }
-            }
-
-            // TTS引擎信息显示
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                ) {
-                    Text(
-                        "语音朗读引擎信息",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "当前引擎",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            runtimeInfo.currentTtsEngineLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "引擎状态",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            if (runtimeInfo.ttsState.isSpeaking) {
-                                "正在朗读"
-                            } else if (runtimeInfo.ttsState != TtsState.Uninitialized) {
-                                "就绪"
-                            } else {
-                                "未就绪"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "引擎列表",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            runtimeInfo.availableTtsEngineLabels.joinToString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                runtimeInfo.ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfo.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
-                    }
-                }
+                    userMessages.showShortMessage("已清除作者想法推送的已读记录")
+                }) { Text("清除所有作者想法推送已读记录") }
             }
         }
     }
@@ -483,18 +393,5 @@ fun DeveloperSettingsScreen() {
                 }
             },
         )
-    }
-}
-
-private fun formatContinuousUsageDuration(durationMs: Long): String {
-    val safeDurationMs = durationMs.coerceAtLeast(0L)
-    val totalSeconds = safeDurationMs / 1_000L
-    val hours = totalSeconds / 3_600L
-    val minutes = (totalSeconds % 3_600L) / 60L
-    val seconds = totalSeconds % 60L
-    return when {
-        hours > 0 -> "${hours}小时${minutes}分${seconds}秒"
-        minutes > 0 -> "${minutes}分${seconds}秒"
-        else -> "${seconds}秒"
     }
 }

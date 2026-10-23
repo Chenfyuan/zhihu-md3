@@ -49,7 +49,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -60,7 +59,6 @@ import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -162,6 +160,16 @@ private fun notificationEntry(
 )
 
 private val settingsSearchEntries = buildList {
+    add(
+        SettingsSearchEntry(
+            id = "appearance.themePreview",
+            title = "主题预览",
+            section = "外观与阅读体验",
+            description = "查看 Material 3 色阶、字体与圆角。",
+            destination = Account.ThemePreview,
+            keywords = listOf("MD3", "设计系统", "配色预览"),
+        ),
+    )
     add(appearanceEntry("appearance.nightMode", "主题模式", "切换浅色、深色或跟随系统。", "nightMode", listOf("夜间模式", "深色模式", "暗色模式", "浅色模式", "跟随系统")))
     add(appearanceEntry("appearance.dynamicColor", "使用 Material You 动态取色", "Android 12+ 根据系统壁纸取色。", "dynamicColor", listOf("动态颜色", "壁纸取色", "主题色")))
     add(appearanceEntry("appearance.landscapeListDetail", "横屏双栏布局", "控制平板和电脑横屏时是否同时显示列表与详情。", LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY, listOf("双栏", "分栏", "平板", "横屏")))
@@ -170,7 +178,6 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.showFeedThumbnail", "显示 Feed 卡片缩略图", "控制信息流卡片图片显示。", "showFeedThumbnail", listOf("图片", "封面")))
     add(appearanceEntry("appearance.showRefreshFab", "显示刷新 FAB 按钮", "控制首页和列表的浮动刷新按钮。", "showRefreshFab", listOf("刷新按钮", "浮动按钮")))
     add(appearanceEntry("appearance.feedCardStyle", "信息流样式", "切换卡片或分割线样式。", "feedCardStyle", listOf("Feed", "列表样式", "卡片样式", "分割线")))
-    add(appearanceEntry("appearance.webviewRender", "使用 WebView 显示文章", "切换文章、回答、想法正文渲染方式。", ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
     add(appearanceEntry("appearance.titleAutoHide", "自动隐藏回答标题", "阅读时自动收起顶部标题。", "titleAutoHide", listOf("标题栏")))
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))
     add(appearanceEntry("appearance.buttonSkipAnswer", "显示跳转下一个回答按钮", "在回答页显示快速跳转按钮。", "buttonSkipAnswer", listOf("下一个回答")))
@@ -217,7 +224,6 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.showSearchHistory", "记录并显示搜索历史", "控制搜索历史记录和展示。", "showSearchHistory", listOf("搜索记录", "历史记录", "清除搜索历史")))
     add(appearanceEntry("appearance.customNavHost", "使用自定义导航", "切换实验性的导航实现。", "use_custom_nav_host"))
     add(appearanceEntry("appearance.predictiveBack", "启用预测性返回", "控制 Android 预测性返回动画。", "enable_predictive_back", listOf("返回手势")))
-    add(appearanceEntry("appearance.duo3", "123Duo3 新 UI", "集中管理 Duo3 视觉和交互开关。", "123Duo3", listOf("新UI", "Duo3")))
 
     add(recommendEntry("recommend.recommendationMode", "推荐算法", "选择 Web、Android、本地或混合推荐。", "recommendationMode", listOf("推荐来源", "Web 推荐", "Android 推荐", "本地推荐", "混合推荐")))
     add(recommendEntry("recommend.loginForRecommendation", "推荐内容时登录", "获取推荐内容时是否带登录凭证。", "loginForRecommendation"))
@@ -256,9 +262,7 @@ private val settingsSearchEntries = buildList {
 
     add(systemEntry("system.githubToken", "GitHub Token", "配置更新检查时使用的 GitHub API 令牌。", "githubToken", listOf("限速", "更新检查", "令牌")))
     add(systemEntry("system.checkNightlyUpdates", "检查 Nightly 版本更新", "检查每日构建版本。", "checkNightlyUpdates", listOf("每日构建")))
-    add(systemEntry("system.allowTelemetry", "允许发送遥测统计数据", "控制匿名使用统计。", "allowTelemetry", listOf("统计", "隐私", "数据收集", "使用数据")))
-    add(systemEntry("system.aigcMarking", "启用 AIGC 标记", "开启后可查看其他用户对内容是否疑似 AIGC 的标记。", AIGC_MARKING_ENABLED_PREFERENCE_KEY, listOf("AI", "AIGC")))
-    add(systemEntry("system.reminder", "防沉迷提醒", "设置连续使用提醒的间隔。", CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, listOf("连续使用", "休息提醒")))
+    add(systemEntry("system.crashLogs", "崩溃日志", "查看、分享或清除本机保存的崩溃记录。", "crashLogs", listOf("崩溃", "日志", "闪退", "crash")))
     if (platformName == "macOS") {
         add(
             systemEntry(

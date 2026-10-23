@@ -18,16 +18,7 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.ui.TtsState
 import kotlinx.coroutines.flow.StateFlow
-
-expect val isWebViewCustomFontSupported: Boolean
-
-@Composable
-expect fun WebViewCustomFontSettings(
-    customFontName: String?,
-    onCustomFontNameChange: (String?) -> Unit,
-)
 
 sealed interface SystemUpdateState {
     data object NoUpdate : SystemUpdateState
@@ -93,10 +84,6 @@ expect val isApkUpdateInstallSupported: Boolean
 data class DeveloperInfoSnapshot(
     val networkStatus: String = "网络状态：未知",
     val powerSaveModeText: String? = null,
-    val continuousUsageDurationMs: Long = 0L,
-    val ttsState: TtsState = TtsState.Uninitialized,
-    val currentTtsEngineLabel: String = "未初始化",
-    val availableTtsEngineLabels: List<String> = emptyList(),
 )
 
 @Composable

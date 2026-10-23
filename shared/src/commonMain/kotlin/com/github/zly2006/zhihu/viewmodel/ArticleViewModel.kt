@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -26,15 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.AigcVoteFlagRequest
-import com.github.zly2006.zhihu.data.AigcVoteFlagResponse
-import com.github.zly2006.zhihu.data.AigcVoteFlagStatusResponse
-import com.github.zly2006.zhihu.data.AigcVoteFlagSubmission
-import com.github.zly2006.zhihu.data.AigcVoteNamedVoter
-import com.github.zly2006.zhihu.data.AigcVoteReadEvent
-import com.github.zly2006.zhihu.data.AigcVoteReadEventsRequest
-import com.github.zly2006.zhihu.data.AigcVoteReadEventsResponse
-import com.github.zly2006.zhihu.data.AigcVoteReadEvidence
 import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.CollectionResponse
 import com.github.zly2006.zhihu.data.DataHolder
@@ -51,11 +41,9 @@ import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.platform.UserMessageSink
-import com.github.zly2006.zhihu.platform.isAigcVoteSupported
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
-import com.github.zly2006.zhihu.util.ZhihuFetchSignature
 import com.github.zly2006.zhihu.util.applySegmentInfosToHtml
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
@@ -73,8 +61,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.parameter
-import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
@@ -99,7 +85,6 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import kotlin.time.Clock
 
 class ArticleViewModel(
     private val article: Article,
@@ -118,6 +103,9 @@ class ArticleViewModel(
     var authorAvatarSrc by mutableStateOf("")
     var authorBadge by mutableStateOf<OfficialBadge?>(null)
     var content by mutableStateOf("")
+
+    /** 详情加载被知乎拒绝的原因：登录后可看 / 请求被限制（null 表示正常或其它错误） */
+    var accessError by mutableStateOf<AccessErrorKind?>(null)
     var attachment by mutableStateOf<JsonElement?>(null)
     var voteUpCount by mutableIntStateOf(0)
     var commentCount by mutableIntStateOf(0)
@@ -153,43 +141,6 @@ class ArticleViewModel(
         private set
     var aiSummaryLoading by mutableStateOf(false)
         private set
-    var aigcVoteAvailable by mutableStateOf(false)
-        private set
-    var aigcVoteLoading by mutableStateOf(false)
-        private set
-    var aigcVoteError by mutableStateOf<String?>(null)
-        private set
-    var aigcVoteCredit by mutableIntStateOf(0)
-        private set
-    var aigcVoteProgress by mutableIntStateOf(0)
-        private set
-    var aigcVoteCap by mutableIntStateOf(5)
-        private set
-    var aigcCreditBypassAvailable by mutableStateOf(false)
-        private set
-    var aigcVoterName by mutableStateOf("")
-        private set
-    var aigcNamedVoters by mutableStateOf<List<AigcVoteNamedVoter>>(emptyList())
-        private set
-
-    /** 自家后端支持人数：在 Zhihu++ 服务中把该内容标记为 AIGC 的有效用户数。 */
-    var aigcEffectiveFlagCount by mutableIntStateOf(0)
-        private set
-    var aigcCurrentVersionFlagCount by mutableIntStateOf(0)
-        private set
-
-    /** 外部来源支持人数：仅来自 zhihuai.sx349.xyz 的支持票投票人数。 */
-    var zhihuaiAigcSupportVoterCount by mutableIntStateOf(0)
-        private set
-
-    /** 展示用 AIGC 支持总人数：自家后端支持人数 + zhihuai 外部支持人数。 */
-    val aigcSupportVoterCount: Int
-        get() = aigcEffectiveFlagCount + zhihuaiAigcSupportVoterCount
-    var aigcFlagged by mutableStateOf(false)
-        private set
-    private var aigcMaxScrollRatio by mutableFloatStateOf(0f)
-    private var aigcReadSyncStarted = false
-    private val openedAtEpochSeconds = Clock.System.now().epochSeconds
     private var aiSummaryJob: Job? = null
     private var exportSourceContent: DataHolder.Content? = null
 
@@ -256,10 +207,20 @@ class ArticleViewModel(
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
+                loadArticleContent(environment)
+            }
+        }
+    }
+
+    /** loadArticle 的实际加载逻辑（可在测试中直接调用，不依赖 Main 调度器） */
+    internal suspend fun loadArticleContent(environment: ArticleLoadEnvironment) {
+        accessError = null
+        run {
+            run {
                 try {
                     if (article.type == ArticleType.Answer) {
                         val sharedData = sharedArticleAnswerSwitchState
-                        val answer = environment.fetchContentDetail(article) as? DataHolder.Answer
+                        val answer = environment.fetchContentDetailOrThrow(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
                             title = answer.question.title
@@ -334,12 +295,12 @@ class ArticleViewModel(
                                 }
                             }
                         } else {
-                            content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
+                            content = LOAD_FAILED_HINT_HTML
                             endorsements = emptyList()
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
-                        val article = environment.fetchContentDetail(article) as? DataHolder.Article
+                        val article = environment.fetchContentDetailOrThrow(article) as? DataHolder.Article
                         if (article != null) {
                             endorsements = emptyList()
                             exportSourceContent = article
@@ -379,7 +340,7 @@ class ArticleViewModel(
                             )
                             environment.recordOpenEvent(this@ArticleViewModel.article, null)
                         } else {
-                            content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
+                            content = LOAD_FAILED_HINT_HTML
                             Log.e("ArticleViewModel", "Article not found")
                         }
                     }
@@ -387,6 +348,14 @@ class ArticleViewModel(
                     throw e
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load content", e)
+                    accessError = classifyAccessError(e)
+                    if (content.isBlank() || accessError != null) {
+                        content = when (accessError) {
+                            AccessErrorKind.LoginRequired -> LOGIN_REQUIRED_HINT_HTML
+                            AccessErrorKind.RateLimited -> RATE_LIMITED_HINT_HTML
+                            null -> LOAD_FAILED_HINT_HTML
+                        }
+                    }
                 }
             }
         }
@@ -637,211 +606,6 @@ class ArticleViewModel(
                 userMessages.showShortMessage("点赞失败: ${e.message}")
             }
         }
-    }
-
-    fun updateAigcReadProgress(
-        currentScroll: Int,
-        maxScroll: Int,
-    ) {
-        val ratio = when {
-            content.isBlank() -> 0f
-            maxScroll <= 0 -> 1f
-            else -> (currentScroll.toFloat() / maxScroll.toFloat()).coerceIn(0f, 1f)
-        }
-        if (ratio > aigcMaxScrollRatio) {
-            aigcMaxScrollRatio = ratio
-        }
-    }
-
-    fun isAigcFlagEvidenceReady(): Boolean = currentAigcReadEvidence().isEligibleForCredit()
-
-    fun loadAigcFlagStatus(environment: AigcVoteEnvironment) {
-        aigcVoteAvailable = isAigcVoteSupported && environment.isAigcVoteEnabled()
-        val voter = environment.aigcVoteVoter()
-        aigcVoterName = voter?.name.orEmpty()
-        if (!aigcVoteAvailable) return
-        val client = environment.aigcVoteHttpClient()
-
-        viewModelScope.launch {
-            aigcVoteLoading = true
-            aigcVoteError = null
-            try {
-                val response = client
-                    .get(
-                        "${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/contents/" +
-                            "${aigcContentType()}/${article.id}/aigc-flag",
-                    ) {
-                        parameter("client_id", environment.aigcVoteClientId())
-                        voter?.let {
-                            parameter("voter_id", it.id)
-                            parameter("voter_name", it.name)
-                            it.urlToken?.takeIf(String::isNotBlank)?.let { token -> parameter("voter_url_token", token) }
-                        }
-                    }.body<AigcVoteFlagStatusResponse>()
-                aigcFlagged = response.myFlagged
-                aigcVoteCredit = response.credit
-                aigcVoteProgress = response.progress
-                aigcVoteCap = response.cap
-                aigcCreditBypassAvailable = response.creditBypassAvailable
-                aigcEffectiveFlagCount = response.effectiveFlagCount
-                aigcNamedVoters = response.voters
-                zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "Failed to load AIGC vote status", e)
-                aigcVoteError = e.message ?: "AIGC 投票状态加载失败"
-            } finally {
-                aigcVoteLoading = false
-            }
-        }
-    }
-
-    fun syncAigcReadEventIfEligible(environment: AigcVoteEnvironment) {
-        aigcVoteAvailable = isAigcVoteSupported && environment.isAigcVoteEnabled()
-        if (!aigcVoteAvailable || aigcReadSyncStarted || content.isBlank()) return
-        val client = environment.aigcVoteHttpClient()
-
-        val evidence = currentAigcReadEvidence()
-        val contentUpdatedAt = currentContentUpdatedAt()
-        if (!evidence.isEligibleForCredit() || contentUpdatedAt <= 0) return
-        aigcReadSyncStarted = true
-
-        viewModelScope.launch {
-            try {
-                val event = AigcVoteReadEvent(
-                    contentType = aigcContentType(),
-                    contentId = article.id.toString(),
-                    title = title,
-                    authorHash = currentAuthorHash(),
-                    contentHtml = content,
-                    contentUpdatedAt = contentUpdatedAt,
-                    evidence = evidence,
-                )
-                val response = client
-                    .post("${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/read-events:batch") {
-                        contentType(ContentType.Application.Json)
-                        setBody(AigcVoteReadEventsRequest(environment.aigcVoteClientId(), listOf(event.toRequestEvent())))
-                    }.body<AigcVoteReadEventsResponse>()
-                aigcVoteCredit = response.credit
-                aigcVoteProgress = response.progress
-                aigcVoteCap = response.cap
-                aigcVoteError = null
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "Failed to sync AIGC read event", e)
-                aigcVoteError = e.message ?: "AIGC 阅读积分同步失败"
-                aigcReadSyncStarted = false
-            }
-        }
-    }
-
-    fun submitAigcFlag(environment: AigcVoteEnvironment) {
-        aigcVoteAvailable = isAigcVoteSupported && environment.isAigcVoteEnabled()
-        if (!aigcVoteAvailable) {
-            aigcVoteError = "未配置 AIGC 投票服务"
-            userMessages.showShortMessage(aigcVoteError!!)
-            return
-        }
-        val client = environment.aigcVoteHttpClient()
-        if (content.isBlank()) {
-            aigcVoteError = "正文尚未加载完成"
-            userMessages.showShortMessage(aigcVoteError!!)
-            return
-        }
-        val voter = environment.aigcVoteVoter()
-        aigcVoterName = voter?.name.orEmpty()
-        if (voter == null) {
-            aigcVoteError = "需要登录后才能记名投票"
-            userMessages.showShortMessage(aigcVoteError!!)
-            return
-        }
-        if (aigcVoteCredit <= 0 && !aigcFlagged && !aigcCreditBypassAvailable) {
-            aigcVoteError = "投票积分不足"
-            userMessages.showShortMessage(aigcVoteError!!)
-            return
-        }
-        if (!aigcCreditBypassAvailable && !isAigcFlagEvidenceReady()) {
-            aigcVoteError = "需要继续阅读后才能标记"
-            userMessages.showShortMessage(aigcVoteError!!)
-            return
-        }
-
-        viewModelScope.launch {
-            aigcVoteLoading = true
-            aigcVoteError = null
-            try {
-                val submission = AigcVoteFlagSubmission(
-                    contentType = aigcContentType(),
-                    contentId = article.id.toString(),
-                    voter = voter,
-                    title = title,
-                    authorHash = currentAuthorHash(),
-                    contentHtml = content,
-                    contentUpdatedAt = currentContentUpdatedAt(),
-                    evidence = currentAigcReadEvidence(),
-                )
-                val response = client
-                    .post(
-                        "${environment.aigcVoteBaseUrl().trimEnd('/')}/v1/contents/" +
-                            "${submission.contentType}/${submission.contentId}/aigc-flag",
-                    ) {
-                        contentType(ContentType.Application.Json)
-                        setBody(
-                            AigcVoteFlagRequest(
-                                clientId = environment.aigcVoteClientId(),
-                                voter = submission.voter,
-                                title = submission.title,
-                                authorHash = submission.authorHash,
-                                contentHtml = submission.contentHtml,
-                                contentUpdatedAt = submission.contentUpdatedAt,
-                                evidence = submission.evidence.toFlagEvidence(),
-                            ),
-                        )
-                    }.body<AigcVoteFlagResponse>()
-                aigcFlagged = response.myFlagged
-                aigcVoteCredit = response.credit
-                aigcCreditBypassAvailable = response.creditBypassAvailable
-                aigcEffectiveFlagCount = response.effectiveFlagCount
-                aigcCurrentVersionFlagCount = response.currentVersionFlagCount
-                aigcNamedVoters = response.voters
-                zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
-                userMessages.showShortMessage("已标记疑似 AIGC")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "AIGC flag failed", e)
-                aigcVoteError = e.message ?: "AIGC 标记失败"
-                userMessages.showShortMessage("AIGC 标记失败: ${e.message}")
-            } finally {
-                aigcVoteLoading = false
-            }
-        }
-    }
-
-    private fun currentAigcReadEvidence(): AigcVoteReadEvidence {
-        val nowEpochSeconds = Clock.System.now().epochSeconds
-        return AigcVoteReadEvidence(
-            foregroundDurationMs = (nowEpochSeconds - openedAtEpochSeconds).coerceAtLeast(0) * 1_000,
-            maxScrollRatio = aigcMaxScrollRatio.toDouble(),
-            openedAtEpochSeconds = openedAtEpochSeconds,
-        )
-    }
-
-    private fun currentContentUpdatedAt(): Long = when {
-        updatedAt > 0L -> updatedAt
-        createdAt > 0L -> createdAt
-        else -> 0L
-    }
-
-    private fun currentAuthorHash(): String = ZhihuFetchSignature.md5Hex(
-        authorId.ifBlank { authorUrlToken.ifBlank { authorName } },
-    )
-
-    private fun aigcContentType(): String = when (article.type) {
-        ArticleType.Answer -> "answer"
-        ArticleType.Article -> "article"
     }
 
     fun loadMoreVoters(environment: ZhihuApiEnvironment, reset: Boolean = false) {
@@ -1145,3 +909,14 @@ private data class AnswerRelationshipEndorsement(
     val type: String = "",
     val text: String = "",
 )
+
+/** 匿名访问时知乎常以 403 拒绝回答/文章详情：给出明确提示而不是空白页。 */
+internal const val LOGIN_REQUIRED_HINT_HTML =
+    "<h1>登录后可看</h1><p>知乎不向未登录用户提供这篇内容，可前往「账号」页登录后再试。</p>"
+
+internal const val RATE_LIMITED_HINT_HTML =
+    "<h1>请求被限制，稍后重试</h1><p>知乎暂时限制了这类请求，等一会儿点「重试」通常就能恢复。</p>"
+
+internal const val LOAD_FAILED_HINT_HTML =
+    "<h1>你似乎来到了没有知识存在的荒原</h1><p>内容可能已被删除，或者知乎要求登录后才能查看。" +
+        "未登录时可前往「账号」页登录后再试。</p>"
