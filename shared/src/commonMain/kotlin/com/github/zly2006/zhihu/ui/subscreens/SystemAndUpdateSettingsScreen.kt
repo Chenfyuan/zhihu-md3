@@ -86,7 +86,7 @@ const val SYSTEM_SETTINGS_AIGC_MARKING_TAG = "system_settings_aigc_marking"
 /**
  * 系统、更新和外部服务设置页。
  *
- * 页面展示更新横幅、下载/安装/跳过版本操作、GitHub Token、Nightly 和遥测。
+ * 页面展示更新横幅、下载/安装/跳过版本操作、GitHub Token和 Nightly。
  * 更新相关状态与动作由细粒度平台能力提供，
  * 改动时要同时考虑 Android 更新管理器和 Desktop 运行时。
  */
@@ -365,19 +365,6 @@ fun SystemAndUpdateSettingsScreen(
                         settings.putBoolean("checkNightlyUpdates", it)
                     },
                     settingKey = "checkNightlyUpdates",
-                    highlightedKey = highlightedSetting,
-                )
-
-                var allowTelemetry by remember { mutableStateOf(settings.getBoolean("allowTelemetry", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("允许发送遥测统计数据") },
-                    description = { Text("仅用于统计使用人数，不包含个人隐私") },
-                    checked = allowTelemetry,
-                    onCheckedChange = {
-                        allowTelemetry = it
-                        settings.putBoolean("allowTelemetry", it)
-                    },
-                    settingKey = "allowTelemetry",
                     highlightedKey = highlightedSetting,
                 )
 

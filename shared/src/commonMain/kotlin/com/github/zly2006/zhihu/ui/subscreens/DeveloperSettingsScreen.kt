@@ -63,7 +63,6 @@ import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.platform.isSentenceSimilaritySupported
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -203,10 +202,9 @@ fun DeveloperSettingsScreen() {
                 ) { Text("Color Scheme") }
 
                 Button(onClick = {
-                    settings.remove(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY)
                     settings.removeByPrefix(HOME_PIN_ANNOUNCEMENT_READ_KEY_PREFIX)
-                    userMessages.showShortMessage("已清除 online notification 和作者想法推送的已读记录")
-                }) { Text("清除所有 online notification 和作者想法推送已读记录") }
+                    userMessages.showShortMessage("已清除作者想法推送的已读记录")
+                }) { Text("清除所有作者想法推送已读记录") }
             }
         }
     }
