@@ -39,7 +39,7 @@ private class FakeCrashLogStore : CrashLogStore {
     override fun read(entry: CrashLogEntry) =
         """
         时间: ${entry.title}
-        应用版本: 0.30.3 (750)
+        应用版本: 0.30.4 (751)
         包名: com.sjtech.zhihu
         设备: Google Pixel 8
         Android: 15 (API 35)

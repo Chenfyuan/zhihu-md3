@@ -72,6 +72,7 @@ abstract class GlassTabsBase(private val suffix: String) {
         com.github.zly2006.zhihu.account.replaceAndroidZhihuAccountStoreForTesting(null)
         val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
         com.github.zly2006.zhihu.data.AccountData.loadData(ctx)
+        com.github.zly2006.zhihu.screenshot.applyReleaseLookIfRequested(ctx)
         com.github.zly2006.zhihu.theme.AndroidThemeSettings.initialize(ctx)
         com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase(ctx)
         com.github.zly2006.zhihu.account.androidZhihuAccountStore(ctx)
